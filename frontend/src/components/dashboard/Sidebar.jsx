@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { navItems } from "./dummydata";
 
 // ── Icons (inline SVG map, no extra dependency) ──────────────────────────────
@@ -48,7 +49,8 @@ const Icon = ({ name, size = 16 }) => {
 };
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-export default function Sidebar({ activeNav, setActiveNav }) {
+export default function Sidebar() {
+  const pathname = usePathname();
   return (
     <aside style={styles.sidebar}>
       {/* Logo */}
@@ -63,21 +65,21 @@ export default function Sidebar({ activeNav, setActiveNav }) {
       {/* Nav */}
       <nav style={styles.nav}>
         {navItems.map((item) => {
-          const active = activeNav === item.label;
+          const active = pathname === item.href;
           return (
-            <button
-              key={item.label}
-              onClick={() => setActiveNav(item.label)}
-              style={{
-                ...styles.navItem,
-                ...(active ? styles.navItemActive : {}),
-              }}
-            >
-              <span style={{ color: active ? "#00e5a0" : "#6b7280" }}>
-                <Icon name={item.icon} />
-              </span>
-              <span>{item.label}</span>
-            </button>
+            <Link href={item.href} key={item.label} style={{ textDecoration: 'none' }}>
+              <button
+                style={{
+                  ...styles.navItem,
+                  ...(active ? styles.navItemActive : {}),
+                }}
+              >
+                <span style={{ color: active ? "#00e5a0" : "#6b7280" }}>
+                  <Icon name={item.icon} />
+                </span>
+                <span>{item.label}</span>
+              </button>
+            </Link>
           );
         })}
       </nav>
