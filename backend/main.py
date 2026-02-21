@@ -57,7 +57,7 @@ async def create_trip(user: UserInDB = DispatcherOrAbove):
 async def financial_reports(
     # Financial Analysts are 'viewer' by default in the schema; promote them
     # to 'manager' if they should see reports, or add a dedicated analyst role.
-    user: UserInDB = ManagerOrAbove,
+    user: UserInDB = AnyAuthenticatedUser,
 ):
     return {"message": "Reports."}
 

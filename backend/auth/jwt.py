@@ -1,32 +1,30 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from .models import TokenData, UserRole
 
 # ---------------------------------------------------------------------------
 # Config — swap these out for env vars / settings object in production
 # ---------------------------------------------------------------------------
-SECRET_KEY = "4af844ac7135a4dab81c66a1bc6fbcf53bb05dd8f99db07cd8799c8751d24ad9"          # openssl rand -hex 32
+SECRET_KEY = "CHANGE_ME_USE_ENV_VAR"          # openssl rand -hex 32
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 # ---------------------------------------------------------------------------
-# Password helpers
+# Password helpers (using bcrypt directly — passlib has conflicts with bcrypt 4.x)
 # ---------------------------------------------------------------------------
 
 def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +56,7 @@ def decode_access_token(token: str) -> Optional[TokenData]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") == "refresh":
-            return None                       # refuse refresh tokens on access endpoints
+            return None
         return TokenData(
             sub=payload["sub"],
             email=payload["email"],
