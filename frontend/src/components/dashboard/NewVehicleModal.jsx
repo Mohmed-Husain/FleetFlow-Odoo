@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { saveVehicle } from "../../lib/storage";
 
 const initialForm = {
   licensePlate:    "",
@@ -30,18 +31,45 @@ const Field = ({ label, name, value, onChange, placeholder = "" }) => (
 );
 
 // ── NewVehicleModal ───────────────────────────────────────────────────────────
-export default function NewVehicleModal({ onClose }) {
+export default function NewVehicleModal({ onClose, onVehicleAdded = () => {} }) {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSave = async () => {
-    // TODO: validate & submit form data to API
+    // Validate form
+    if (!form.licensePlate || !form.maxPayload || !form.initialOdometer || !form.type || !form.model) {
+      setError("All fields are required");
+      return;
+    }
+
+    setError("");
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800)); // remove this fake delay
-    setLoading(false);
-    onClose();
+    
+    try {
+      // Simulate API delay
+      await new Promise(r => setTimeout(r, 500));
+      
+      // Save to localStorage
+      const newVehicle = {
+        plate: form.licensePlate,
+        capacity: form.maxPayload,
+        odometer: parseInt(form.initialOdometer) || 0,
+        type: form.type,
+        model: form.model,
+        status: "Idle",
+      };
+      
+      saveVehicle(newVehicle);
+      onVehicleAdded();
+      setLoading(false);
+      onClose();
+    } catch (err) {
+      setError("Failed to save vehicle");
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -84,6 +112,11 @@ export default function NewVehicleModal({ onClose }) {
 
         {/* Form body */}
         <div className="px-6 py-5 flex flex-col gap-4">
+          {error && (
+            <div className="bg-[#f87171]/10 border border-[#f87171]/30 rounded-lg px-3 py-2 text-[12px] text-[#f87171]">
+              {error}
+            </div>
+          )}
           <Field
             label="License Plate"
             name="licensePlate"
