@@ -57,10 +57,6 @@ async function apiRequest(endpoint, options = {}) {
     // Handle 401 Unauthorized
     if (response.status === 401) {
         removeAuthToken();
-        // Optionally redirect to login
-        if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-        }
         throw new Error('Unauthorized');
     }
 

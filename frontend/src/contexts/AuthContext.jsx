@@ -35,8 +35,14 @@ export function AuthProvider({ children }) {
         if (response.access_token) {
             setAuthToken(response.access_token);
             // Fetch user data after login
-            const userData = await authApi.getCurrentUser();
-            setUser(userData);
+            try {
+                const userData = await authApi.getCurrentUser();
+                setUser(userData);
+            } catch (err) {
+                // Even if /auth/me fails, user has a valid token
+                // Set a minimal user object so isAuthenticated becomes true
+                setUser({ email });
+            }
         }
         return response;
     }, []);

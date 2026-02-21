@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useState, useEffect } from "react";
 import Sidebar from "../../components/dashboard/Sidebar";
 import Topbar from "../../components/dashboard/Topbar";
 import NewVehicleModal from "../../components/dashboard/NewVehicleModal";
@@ -18,6 +17,11 @@ export default function VehicleRegistryPage() {
     maintenanceAlert: 0,
     pendingCargo: 0,
   });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState({});
+  const [sortBy, setSortBy] = useState("");
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   // Fetch fleet stats
   useEffect(() => {
@@ -26,9 +30,9 @@ export default function VehicleRegistryPage() {
         const fleetStats = await analyticsApi.getFleetStats();
         if (fleetStats) {
           setStats({
-            activeFleet: fleetStats.active_vehicles || fleetStats.total_vehicles || 0,
-            maintenanceAlert: fleetStats.maintenance_vehicles || 0,
-            pendingCargo: fleetStats.scheduled_trips || 0,
+            activeFleet: fleetStats.vehicles?.total || 0,
+            maintenanceAlert: fleetStats.vehicles?.by_status?.in_shop || 0,
+            pendingCargo: fleetStats.trips?.by_status?.scheduled || 0,
           });
         }
       } catch (err) {
@@ -41,6 +45,13 @@ export default function VehicleRegistryPage() {
   const handleVehicleCreated = () => {
     setRefreshKey(k => k + 1);
   };
+
+  const handleSearch = (val) => setSearchQuery(val);
+  const handleGroupBy = () => { };
+  const handleFilter = () => setShowFilterMenu(prev => !prev);
+  const handleSortBy = () => setShowSortMenu(prev => !prev);
+  const applyFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val }));
+  const applySortBy = (field) => setSortBy(field);
 
   return (
     <ProtectedRoute>

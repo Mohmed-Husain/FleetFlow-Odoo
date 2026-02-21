@@ -5,8 +5,8 @@ import { tripsApi } from "@/lib/api";
 // Map API status to display format
 const statusMap = {
   "scheduled": "Scheduled",
-  "in_progress": "On way",
-  "completed": "Completed",
+  "in_transit": "On way",
+  "delivered": "Completed",
   "cancelled": "Cancelled",
 };
 
@@ -46,8 +46,8 @@ export default function TripTable() {
       const trips = (response.data || response || []).map(t => ({
         id: t.id,
         fleetType: t.vehicle_model || t.vehicle_plate || "Vehicle",
-        origin: t.origin_address || "N/A",
-        destination: t.destination_address || "N/A",
+        origin: t.origin || "N/A",
+        destination: t.destination || "N/A",
         status: statusMap[t.status] || t.status,
         driver: t.driver_name,
       }));
@@ -131,7 +131,7 @@ export default function TripTable() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#1c1c22"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                <td style={{ ...styles.td, color: "#e5e7eb" }}>{trip.type}</td>
+                <td style={{ ...styles.td, color: "#e5e7eb" }}>{trip.fleetType}</td>
                 <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.origin}</td>
                 <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.destination}</td>
                 <td style={styles.td}><StatusBadge status={trip.status} /></td>

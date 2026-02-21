@@ -52,9 +52,9 @@ export default function NewTripForm({ onSuccess, onCancel }) {
         vehicle_id: form.vehicleId,
         driver_id: form.driverId,
         cargo_weight_kg: form.cargoWeight ? parseFloat(form.cargoWeight) : null,
-        origin_address: form.originAddress || "N/A",
-        destination_address: form.destinationAddress || "N/A",
-        estimated_fuel_cost: form.estimatedFuelCost ? parseFloat(form.estimatedFuelCost) : null,
+        origin: form.originAddress || "N/A",
+        destination: form.destinationAddress || "N/A",
+        scheduled_departure: new Date().toISOString(),
       };
 
       await tripsApi.create(payload);

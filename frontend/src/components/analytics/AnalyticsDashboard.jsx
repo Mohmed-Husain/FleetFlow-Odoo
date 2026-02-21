@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useState, useEffect } from "react";
 import {
   LineChart, Line,
   BarChart, Bar,
@@ -94,9 +93,9 @@ export default function AnalyticsDashboard() {
       // Transform financial data for table
       const financial = (financialRes || []).map(f => ({
         month: f.month || "N/A",
-        revenue: f.revenue ? `₹${(f.revenue / 100000).toFixed(1)}L` : "-",
-        fuelCost: f.fuel_cost ? `₹${(f.fuel_cost / 100000).toFixed(1)}L` : "-",
-        maintenance: f.maintenance_cost ? `₹${(f.maintenance_cost / 100000).toFixed(1)}L` : "-",
+        revenue: f.total_revenue ? `₹${(f.total_revenue / 100000).toFixed(1)}L` : "-",
+        fuelCost: f.total_fuel_cost ? `₹${(f.total_fuel_cost / 100000).toFixed(1)}L` : "-",
+        maintenance: f.total_maintenance_cost ? `₹${(f.total_maintenance_cost / 100000).toFixed(1)}L` : "-",
         netProfit: f.net_profit ? `₹${(f.net_profit / 100000).toFixed(1)}L` : "-",
       }));
       setFinancialData(financial);
@@ -123,9 +122,10 @@ export default function AnalyticsDashboard() {
 
   // Default KPI values
   const kpiCards = [
-    { label: "Total Fuel Cost", value: kpis?.total_fuel_cost ? `₹${(kpis.total_fuel_cost / 100000).toFixed(1)}L` : "₹0", color: "#f59e0b" },
-    { label: "Fleet ROI", value: kpis?.fleet_roi ? `${kpis.fleet_roi}%` : "+0%", color: "#00e5a0" },
+    { label: "Active Fleet", value: kpis?.active_fleet ?? 0, color: "#00e5a0" },
+    { label: "Maintenance Alerts", value: kpis?.maintenance_alerts ?? 0, color: "#f59e0b" },
     { label: "Utilization Rate", value: kpis?.utilization_rate ? `${kpis.utilization_rate}%` : "0%", color: "#a78bfa" },
+    { label: "Pending Cargo", value: kpis?.pending_cargo ?? 0, color: "#3b82f6" },
   ];
 
   if (error) {

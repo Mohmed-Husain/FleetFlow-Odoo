@@ -102,54 +102,5 @@ export default function PerformanceTable() {
                 </tbody>
             </table>
         </div>
-        </div >
-      ))
-}
-
-{/* Non-grouped Table */ }
-{
-    !groupedData && (
-        <div style={{ overflowX: "auto" }}>
-            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr style={{ borderBottom: "1px solid #1f1f26" }}>
-                        {['Name', 'License#', 'Expiry', 'Completion Rate', 'Safety Score', 'Complaints', 'Actions'].map(h => (
-                            <th key={h} style={{ padding: '0.75rem', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', color: '#6b7280' }}>{h}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {drivers.map((driver, idx) => (
-                        <tr key={idx} style={{ borderBottom: "1px solid #1f1f26", transition: "background 0.1s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#1c1c22"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                            <td style={{ padding: '0.75rem' }}>{driver.name}</td>
-                            <td style={{ padding: '0.75rem', fontFamily: "'DM Mono'" }}>{driver.license}</td>
-                            <td style={{ padding: '0.75rem' }}>{new Date(driver.expiryDate).toLocaleDateString()}</td>
-                            <td style={{ padding: '0.75rem', color: "#00e5a0", fontWeight: "600" }}>{driver.completionRate}%</td>
-                            <td style={{ padding: '0.75rem', background: driver.safetyScore >= 90 ? "rgba(0,229,160,0.1)" : driver.safetyScore >= 85 ? "rgba(251,146,60,0.1)" : "rgba(248,113,113,0.1)", color: driver.safetyScore >= 90 ? "#00e5a0" : driver.safetyScore >= 85 ? "#fb923c" : "#f87171", borderRadius: "4px" }}>{driver.safetyScore}%</td>
-                            <td style={{ padding: '0.75rem', background: driver.complaints === 0 ? "rgba(0,229,160,0.1)" : driver.complaints <= 2 ? "rgba(251,146,60,0.1)" : "rgba(248,113,113,0.1)", color: driver.complaints === 0 ? "#00e5a0" : driver.complaints <= 2 ? "#fb923c" : "#f87171", borderRadius: "4px" }}>{driver.complaints}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                                <button
-                                    onClick={() => handleDelete(driver.id)}
-                                    style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}
-                                >
-                                    Delete
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    )
-}
-
-{
-    drivers.length === 0 && (
-        <div style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
-            No drivers found.
-        </div>
-    )
-}
-    </div >
-  );
+    );
 }
