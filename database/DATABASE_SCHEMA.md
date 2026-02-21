@@ -2,30 +2,41 @@
 
 ## Overview
 
-Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Management System**.
+Normalized (3NF), lean PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Management System**.
 
 | Metric | Count |
 |--------|-------|
 | Tables | **9** |
 | Enums | 13 |
-| Trigger functions | 7 |
+| Trigger functions | 6 |
 | Views | 4 |
 
-### Normalization Decisions
+### Minimization Decisions (v3.0)
+
+| What was removed | Why |
+|------------------|-----|
+| `created_at`, `updated_at` on all tables | Hackathon scope — timestamps handled at the app layer; reduces column count by ~18 |
+| `is_active` on `users` and `vehicles` | Soft-delete not needed; `vehicles.status = 'retired'` serves the same purpose for vehicles; users can be hard-deleted or status-managed at app layer |
+| `trips.actual_departure` | Redundant alongside `scheduled_departure`; not referenced by any view |
+| `trips.created_by`, `maintenance_logs.created_by`, `expenses.created_by` | Accountability can be handled at the app/API layer; reduces FK overhead |
+| `users.username`, `users.phone` | `email` is the unique identifier; phone not needed for hackathon |
+| `fn_update_timestamp()` + 8 triggers | No longer needed without `updated_at` columns |
+
+### Prior Normalization Decisions (v2.0)
 
 | What was removed/moved | Why |
 |------------------------|-----|
-| `drivers.total_trips`, `completion_rate`, `total_complaints` | **3NF violation** — derivable from `trips` and `driver_complaints` tables; now computed in `vw_driver_performance` |
+| `drivers.total_trips`, `completion_rate`, `total_complaints` | **3NF violation** — derivable from `trips` and `driver_complaints`; computed in `vw_driver_performance` |
 | `drivers.is_available` | Derivable from `duty_status NOT IN ('on_duty','suspended')` |
-| `trips.actual_fuel_cost`, `estimated_fuel_cost` | Derivable from `SUM(fuel_logs.total_cost)` per trip; avoids double-source of truth |
-| `vehicles.registration_date`, `insurance_expiry` | Already stored in `vehicle_documents` (with proper issue/expiry dates) |
-| `vehicles.color`, `vin_number`, `purchase_date`, `purchase_price` | Non-operational; not needed for fleet dispatching |
-| `audit_log` table | Removed entirely — not core for hackathon scope; add back if needed |
-| All `notes` columns | Removed across all tables — reduces nullable bloat |
+| `trips.actual_fuel_cost`, `estimated_fuel_cost` | Derivable from `SUM(fuel_logs.total_cost)` per trip |
+| `vehicles.registration_date`, `insurance_expiry` | Already stored in `vehicle_documents` |
+| `vehicles.color`, `vin_number`, `purchase_date`, `purchase_price` | Non-operational |
+| `audit_log` table | Not core for hackathon scope |
+| All `notes` columns | Reduces nullable bloat |
 | `users.avatar_url`, `last_login_at` | Cosmetic / session-layer concerns |
 | `drivers.date_of_birth`, `emergency_contact_*`, `address` | Not business-critical for fleet ops |
 | `expenses.driver_id` | Derivable via `trip_id → trips.driver_id` |
-| `fuel_logs.fuel_station`, `created_by` | Non-critical; `driver_id` suffices for accountability |
+| `fuel_logs.fuel_station`, `created_by` | `driver_id` suffices for accountability |
 | `driver_complaints.resolution_notes` | `status` + `resolved_at` sufficient |
 | `vehicle_documents.document_url` | File storage is an app-layer concern |
 
@@ -37,22 +48,20 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 ┌──────────┐       ┌──────────┐       ┌──────────┐
 │  users   │──1:1──│ drivers  │──1:N──│  trips   │
 └──────────┘       └──────────┘       └──────────┘
-     │                   │                 │  │  │
-     │              1:N  │            1:N  │  │  │ 1:N
-     │                   ▼                 │  │  ▼
-     │         ┌──────────────────┐        │  │ ┌───────────┐
-     │         │driver_complaints │◄───────┘  │ │ expenses  │
-     │         └──────────────────┘           │ └───────────┘
-     │                                        │
-     │              ┌──────────┐         1:N  │
-     │              │ vehicles │──────────────┘
-     │              └──────────┘
-     │                   │ 1:N             1:N
-     │                   ├──────► maintenance_logs
-     │                   ├──────► fuel_logs
-     │                   └──────► vehicle_documents
-     │
-     └────► (created_by FK on trips, maintenance, expenses, complaints)
+                         │                 │  │  │
+                    1:N  │            1:N  │  │  │ 1:N
+                         ▼                 │  │  ▼
+               ┌──────────────────┐        │  │ ┌───────────┐
+               │driver_complaints │◄───────┘  │ │ expenses  │
+               └──────────────────┘           │ └───────────┘
+                                              │
+                    ┌──────────┐         1:N  │
+                    │ vehicles │──────────────┘
+                    └──────────┘
+                         │ 1:N             1:N
+                         ├──────► maintenance_logs
+                         ├──────► fuel_logs
+                         └──────► vehicle_documents
 ```
 
 ---
@@ -66,18 +75,13 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | SERIAL | PK | Primary key |
-| `username` | VARCHAR(50) | UNIQUE, NOT NULL | Login username |
 | `email` | VARCHAR(255) | UNIQUE, NOT NULL | Email address |
 | `password_hash` | VARCHAR(255) | NOT NULL | Bcrypt hash |
 | `role` | user_role | NOT NULL, DEFAULT 'viewer' | `admin`, `manager`, `dispatcher`, `driver`, `viewer` |
 | `first_name` | VARCHAR(100) | NOT NULL | First name |
 | `last_name` | VARCHAR(100) | NOT NULL | Last name |
-| `phone` | VARCHAR(20) | | Contact phone |
-| `is_active` | BOOLEAN | NOT NULL, DEFAULT TRUE | Soft delete |
-| `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
 
-**Relationships:** 1:1 → `drivers` | Referenced as `created_by` on trips, maintenance, expenses, complaints
+**Relationships:** 1:1 → `drivers` | Referenced as `reported_by` on `driver_complaints`
 
 ---
 
@@ -104,6 +108,8 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 **Relationships:** 1:N → `trips`, `maintenance_logs`, `fuel_logs`, `expenses`, `vehicle_documents`
 
 **Auto-managed status:** `idle` ↔ `on_trip` (via trip trigger) | `idle` ↔ `in_shop` (via maintenance trigger)
+
+**Retirement:** Use `status = 'retired'` instead of a soft-delete flag. Views filter by `status != 'retired'`.
 
 ---
 
@@ -152,7 +158,7 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
 | `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
-**Relationships:** N:1 → `vehicles`, `drivers`, `users` | 1:N → `expenses`, `fuel_logs`, `driver_complaints`
+**Relationships:** N:1 → `vehicles`, `drivers` | 1:N → `expenses`, `fuel_logs`, `driver_complaints`
 
 **Trigger guards:** cargo overload check, driver license/suspension check, vehicle idle check
 
@@ -177,7 +183,7 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
 | `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
-**Relationships:** N:1 → `vehicles`, `users`
+**Relationships:** N:1 → `vehicles`
 
 **Trigger:** Auto-sets vehicle to `in_shop` on create; back to `idle` on complete/cancel
 
@@ -201,7 +207,7 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 <!-- | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
 | `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
-**Relationships:** N:1 → `trips`, `vehicles`, `users`
+**Relationships:** N:1 → `trips`, `vehicles`
 
 ---
 
@@ -296,13 +302,12 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 
 | # | Trigger | Table | What It Does |
 |---|---------|-------|-------------|
-| 1 | `trg_*_updated` | All 8 mutable tables | Auto-sets `updated_at` = NOW() |
-| 2 | `trg_check_cargo` | trips | **Blocks** if `cargo_weight_kg` > vehicle capacity |
-| 3 | `trg_check_driver` | trips | **Blocks** if driver license expired or suspended |
-| 4 | `trg_check_vehicle` | trips | **Blocks** if vehicle status ≠ idle |
-| 5 | `trg_trip_status_sync` | trips | Sets vehicle → `on_trip`, driver → `on_duty` on transit; resets on delivery/cancel |
-| 6 | `trg_maintenance_status` | maintenance_logs | Sets vehicle → `in_shop` on create; → `idle` on complete/cancel |
-| 7 | `trg_sync_odometer` | fuel_logs | Updates `vehicles.current_odometer_km` to highest reading |
+| 1 | `trg_check_cargo` | trips | **Blocks** if `cargo_weight_kg` > vehicle capacity |
+| 2 | `trg_check_driver` | trips | **Blocks** if driver license expired or suspended |
+| 3 | `trg_check_vehicle` | trips | **Blocks** if vehicle status ≠ idle |
+| 4 | `trg_trip_status_sync` | trips | Sets vehicle → `on_trip`, driver → `on_duty` on transit; resets on delivery/cancel |
+| 5 | `trg_maintenance_status` | maintenance_logs | Sets vehicle → `in_shop` on create; → `idle` on complete/cancel |
+| 6 | `trg_sync_odometer` | fuel_logs | Updates `vehicles.current_odometer_km` to highest reading |
 
 ---
 
@@ -311,14 +316,18 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 ### `vw_dashboard_kpis`
 Single row: `active_fleet`, `maintenance_alerts`, `utilization_rate` (%), `pending_cargo`
 
+Uses `status != 'retired'` to filter active vehicles.
+
 ### `vw_vehicle_cost_summary`
-Per vehicle: fuel cost, maintenance cost, total cost, revenue, net profit, km/liter
+Per vehicle: `vehicle_name` (make + model), fuel cost, maintenance cost, total cost, revenue, net profit, km/liter
+
+Filters by `status != 'retired'`.
 
 ### `vw_driver_performance`
 Per driver: name, license info, `license_expired` flag, safety score, duty status, **computed** `is_available`, `total_trips`, `completed_trips`, `cancelled_trips`, `completion_rate`, `total_complaints`
 
 ### `vw_monthly_financial_summary`
-Per month: total revenue, fuel cost, maintenance cost, net profit
+Per month (grouped by `actual_arrival`): total revenue, fuel cost, maintenance cost, net profit
 
 ---
 
@@ -343,7 +352,7 @@ Per month: total revenue, fuel cost, maintenance cost, net profit
 
 2. **Denormalization kept for `current_odometer_km`** — Practical tradeoff: avoids scanning `fuel_logs` on every vehicle read; kept consistent via trigger.
 
-3. **Soft Deletes** — `is_active` on `users` and `vehicles` preserves referential integrity.
+3. **No timestamps or soft-delete columns** — `created_at`, `updated_at`, and `is_active` removed for hackathon minimality; timestamp/audit tracking can be added at the app layer. Vehicle retirement uses `status = 'retired'`.
 
 4. **RESTRICT on Trip FKs** — Prevents deleting vehicles/drivers with trip history.
 
