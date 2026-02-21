@@ -1,16 +1,23 @@
 "use client";
-import { trips } from "./dummydata";
+import { useState, useEffect } from "react";
+import { tripsApi } from "@/lib/api";
 
-const tripData = [
-  { id: 1, fleetType: "Trailer Truck", origin: "Mumbai", destination: "Pune", status: "On way" },
-  // Add more trip data here
-];
+// Map API status to display format
+const statusMap = {
+  "scheduled": "Scheduled",
+  "in_progress": "On way",
+  "completed": "Completed",
+  "cancelled": "Cancelled",
+};
 
 // ── Status badge colours ──────────────────────────────────────────────────────
 const statusStyle = {
-  "On way":     { background: "rgba(0,229,160,0.12)",  color: "#00e5a0",  dot: "#00e5a0"  },
-  "Idle":        { background: "rgba(107,114,128,0.15)", color: "#9ca3af", dot: "#9ca3af"  },
-  "Maintenance": { background: "rgba(245,158,11,0.12)", color: "#f59e0b",  dot: "#f59e0b"  },
+  "On way": { background: "rgba(0,229,160,0.12)", color: "#00e5a0", dot: "#00e5a0" },
+  "Scheduled": { background: "rgba(59,130,246,0.12)", color: "#3b82f6", dot: "#3b82f6" },
+  "Completed": { background: "rgba(107,114,128,0.15)", color: "#9ca3af", dot: "#9ca3af" },
+  "Cancelled": { background: "rgba(239,68,68,0.12)", color: "#ef4444", dot: "#ef4444" },
+  "Idle": { background: "rgba(107,114,128,0.15)", color: "#9ca3af", dot: "#9ca3af" },
+  "Maintenance": { background: "rgba(245,158,11,0.12)", color: "#f59e0b", dot: "#f59e0b" },
 };
 
 const StatusBadge = ({ status }) => {
@@ -25,12 +32,80 @@ const StatusBadge = ({ status }) => {
 
 // ── TripTable ─────────────────────────────────────────────────────────────────
 export default function TripTable() {
+  const [tripData, setTripData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const fetchTrips = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await tripsApi.getAll();
+      // Transform API response to match component format
+      const trips = (response.data || response || []).map(t => ({
+        id: t.id,
+        fleetType: t.vehicle_model || t.vehicle_plate || "Vehicle",
+        origin: t.origin_address || "N/A",
+        destination: t.destination_address || "N/A",
+        status: statusMap[t.status] || t.status,
+        driver: t.driver_name,
+      }));
+      setTripData(trips);
+    } catch (err) {
+      setError(err.message);
+      console.error("Failed to fetch trips:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
   const handleRowClick = (trip) => { /* TODO: open trip detail */ };
+
+  const filtered = tripData.filter(
+    (t) =>
+      t.fleetType.toLowerCase().includes(search.toLowerCase()) ||
+      t.origin.toLowerCase().includes(search.toLowerCase()) ||
+      t.destination.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div style={styles.wrapper}>
+        <div style={{ padding: "60px 24px", textAlign: "center" }}>
+          <p style={{ color: "#6b7280", fontSize: 14 }}>Loading trips...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.wrapper}>
+        <div style={{ padding: "60px 24px", textAlign: "center" }}>
+          <p style={{ color: "#f87171", fontSize: 14, marginBottom: 16 }}>Failed to load trips: {error}</p>
+          <button onClick={fetchTrips} style={{ background: "#00e5a0", color: "#000", padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.wrapper}>
       <div style={styles.header}>
-        <input type="text" placeholder="Search bar....." style={styles.searchBar} />
+        <input
+          type="text"
+          placeholder="Search trips..."
+          style={styles.searchBar}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <div>
           <button style={styles.actionButton}>Group by</button>
           <button style={styles.actionButton}>Filter</button>
@@ -48,7 +123,7 @@ export default function TripTable() {
             </tr>
           </thead>
           <tbody>
-            {tripData.map((trip, i) => (
+            {filtered.map((trip) => (
               <tr
                 key={trip.id}
                 style={styles.tr}
@@ -62,6 +137,13 @@ export default function TripTable() {
                 <td style={styles.td}><StatusBadge status={trip.status} /></td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={4} style={{ padding: "40px 24px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>
+                  No trips found.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

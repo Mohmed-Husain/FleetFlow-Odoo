@@ -1,64 +1,172 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { tripsApi, vehiclesApi, driversApi } from '@/lib/api';
 
-export default function NewTripForm() {
+export default function NewTripForm({ onSuccess, onCancel }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [form, setForm] = useState({
+    vehicleId: '',
+    driverId: '',
+    cargoWeight: '',
+    originAddress: '',
+    destinationAddress: '',
+    estimatedFuelCost: '',
+  });
+
+  // Fetch vehicles and drivers on mount
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [vehicleRes, driverRes] = await Promise.all([
+          vehiclesApi.getOptions().catch(() => []),
+          driversApi.getOptions().catch(() => []),
+        ]);
+        setVehicles(vehicleRes || []);
+        setDrivers(driverRes || []);
+      } catch (err) {
+        console.error("Failed to fetch options:", err);
+      }
+    };
+    fetchOptions();
+  }, []);
+
+  const handleChange = (e) => {
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+
+    if (!form.vehicleId || !form.driverId) {
+      setError("Please select a vehicle and driver");
+      return;
+    }
+
     setIsSubmitting(true);
-    // Handle form submission logic here
-    console.log("Form submitted");
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSubmitting(false);
+    try {
+      const payload = {
+        vehicle_id: form.vehicleId,
+        driver_id: form.driverId,
+        cargo_weight_kg: form.cargoWeight ? parseFloat(form.cargoWeight) : null,
+        origin_address: form.originAddress || "N/A",
+        destination_address: form.destinationAddress || "N/A",
+        estimated_fuel_cost: form.estimatedFuelCost ? parseFloat(form.estimatedFuelCost) : null,
+      };
+
+      await tripsApi.create(payload);
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      setError(err.message || "Failed to create trip");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="bg-white p-6 rounded-md shadow-md">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">New Trip Form</h2>
+    <div className="bg-[#18181c] border border-[#1f1f26] p-6 rounded-2xl">
+      <h2 className="text-xl font-semibold text-[#f0f0f5] mb-4">New Trip Form</h2>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-red-400 text-[13px] mb-4">
+          {error}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="select-vehicle" className="block text-sm font-medium text-gray-700">Select Vehicle</label>
-            <select id="select-vehicle" name="select-vehicle" className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-              {/* Populate with vehicle data */}
-              <option>Select a vehicle</option>
-              <option>Trailer Truck - MH01AB1234</option>
-              <option>Container Truck - MH02CD5678</option>
+            <label htmlFor="vehicleId" className="block text-sm font-medium text-[#9ca3af]">Select Vehicle *</label>
+            <select
+              id="vehicleId"
+              name="vehicleId"
+              value={form.vehicleId}
+              onChange={handleChange}
+              className="mt-1 block w-full bg-[#111114] border border-[#2a2a34] rounded-lg px-3 py-2 text-[#e5e7eb] focus:border-[#00e5a0] outline-none"
+            >
+              <option value="">Select a vehicle</option>
+              {vehicles.map(v => (
+                <option key={v.id} value={v.id}>{v.label || v.license_plate}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label htmlFor="cargo-weight" className="block text-sm font-medium text-gray-700">Cargo Weight (Kg)</label>
-            <input type="number" name="cargo-weight" id="cargo-weight" className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+            <label htmlFor="cargoWeight" className="block text-sm font-medium text-[#9ca3af]">Cargo Weight (Kg)</label>
+            <input
+              type="number"
+              name="cargoWeight"
+              id="cargoWeight"
+              value={form.cargoWeight}
+              onChange={handleChange}
+              className="mt-1 block w-full bg-[#111114] border border-[#2a2a34] rounded-lg px-3 py-2 text-[#e5e7eb] focus:border-[#00e5a0] outline-none"
+            />
           </div>
           <div>
-            <label htmlFor="select-driver" className="block text-sm font-medium text-gray-700">Select Driver</label>
-            <select id="select-driver" name="select-driver" className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-              {/* Populate with driver data */}
-              <option>Select a driver</option>
-              <option>John Doe</option>
-              <option>Jane Smith</option>
+            <label htmlFor="driverId" className="block text-sm font-medium text-[#9ca3af]">Select Driver *</label>
+            <select
+              id="driverId"
+              name="driverId"
+              value={form.driverId}
+              onChange={handleChange}
+              className="mt-1 block w-full bg-[#111114] border border-[#2a2a34] rounded-lg px-3 py-2 text-[#e5e7eb] focus:border-[#00e5a0] outline-none"
+            >
+              <option value="">Select a driver</option>
+              {drivers.map(d => (
+                <option key={d.id} value={d.id}>{d.label || d.name}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label htmlFor="origin-address" className="block text-sm font-medium text-gray-700">Origin Address</label>
-            <input type="text" name="origin-address" id="origin-address" className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+            <label htmlFor="originAddress" className="block text-sm font-medium text-[#9ca3af]">Origin Address</label>
+            <input
+              type="text"
+              name="originAddress"
+              id="originAddress"
+              value={form.originAddress}
+              onChange={handleChange}
+              className="mt-1 block w-full bg-[#111114] border border-[#2a2a34] rounded-lg px-3 py-2 text-[#e5e7eb] focus:border-[#00e5a0] outline-none"
+            />
           </div>
           <div>
-            <label htmlFor="destination" className="block text-sm font-medium text-gray-700">Destination</label>
-            <input type="text" name="destination" id="destination" className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+            <label htmlFor="destinationAddress" className="block text-sm font-medium text-[#9ca3af]">Destination</label>
+            <input
+              type="text"
+              name="destinationAddress"
+              id="destinationAddress"
+              value={form.destinationAddress}
+              onChange={handleChange}
+              className="mt-1 block w-full bg-[#111114] border border-[#2a2a34] rounded-lg px-3 py-2 text-[#e5e7eb] focus:border-[#00e5a0] outline-none"
+            />
           </div>
           <div>
-            <label htmlFor="fuel-cost" className="block text-sm font-medium text-gray-700">Estimated Fuel Cost</label>
-            <input type="number" name="fuel-cost" id="fuel-cost" className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+            <label htmlFor="estimatedFuelCost" className="block text-sm font-medium text-[#9ca3af]">Estimated Fuel Cost (₹)</label>
+            <input
+              type="number"
+              name="estimatedFuelCost"
+              id="estimatedFuelCost"
+              value={form.estimatedFuelCost}
+              onChange={handleChange}
+              className="mt-1 block w-full bg-[#111114] border border-[#2a2a34] rounded-lg px-3 py-2 text-[#e5e7eb] focus:border-[#00e5a0] outline-none"
+            />
           </div>
         </div>
-        <div className="mt-6">
+        <div className="mt-6 flex gap-3">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 py-2 px-4 border border-[#27272e] rounded-lg text-sm font-medium text-[#9ca3af] hover:border-[#3d3d4a] hover:text-[#d1d5db] transition-all"
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400"
+            className="flex-1 flex justify-center py-2 px-4 rounded-lg text-sm font-bold text-[#0a0a0c] bg-[#00e5a0] hover:opacity-90 disabled:opacity-50 transition-all"
           >
             {isSubmitting ? 'Dispatching...' : 'Confirm & Dispatch Trip'}
           </button>

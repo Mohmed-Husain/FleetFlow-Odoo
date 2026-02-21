@@ -1,21 +1,21 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { maintenanceApi } from "@/lib/api";
 
-// ── Dummy Data ────────────────────────────────────────────────────────────────
-const maintenanceData = [
-  { logId: 321, vehicle: "TATA 407",    issue: "Engine Issue",       date: "20/02/2025", cost: "₹10,000", status: "New"         },
-  { logId: 322, vehicle: "Ashok Leyland",issue: "Brake Replacement", date: "18/02/2025", cost: "₹6,500",  status: "In Progress" },
-  { logId: 323, vehicle: "MH-12-AB-1234",issue: "Oil Change",        date: "15/02/2025", cost: "₹2,200",  status: "Completed"   },
-  { logId: 324, vehicle: "GJ-01-CD-5678",issue: "Tyre Puncture",     date: "12/02/2025", cost: "₹800",    status: "Completed"   },
-  { logId: 325, vehicle: "DL-03-EF-9012",issue: "AC Repair",         date: "10/02/2025", cost: "₹4,500",  status: "In Progress" },
-  { logId: 326, vehicle: "KA-05-GH-3456",issue: "Battery Dead",      date: "08/02/2025", cost: "₹3,200",  status: "New"         },
-];
+// Map API status to display format
+const statusMap = {
+  "scheduled": "New",
+  "in_progress": "In Progress",
+  "completed": "Completed",
+  "cancelled": "Cancelled",
+};
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const statusCfg = {
-  "New":         { bg: "rgba(59,130,246,0.1)",  color: "#3b82f6", dot: "#3b82f6"  },
-  "In Progress": { bg: "rgba(245,158,11,0.1)",  color: "#f59e0b", dot: "#f59e0b"  },
-  "Completed":   { bg: "rgba(0,229,160,0.1)",   color: "#00e5a0", dot: "#00e5a0"  },
+  "New": { bg: "rgba(59,130,246,0.1)", color: "#3b82f6", dot: "#3b82f6" },
+  "In Progress": { bg: "rgba(245,158,11,0.1)", color: "#f59e0b", dot: "#f59e0b" },
+  "Completed": { bg: "rgba(0,229,160,0.1)", color: "#00e5a0", dot: "#00e5a0" },
+  "Cancelled": { bg: "rgba(239,68,68,0.1)", color: "#ef4444", dot: "#ef4444" },
 };
 
 const StatusBadge = ({ status }) => {
@@ -36,20 +36,82 @@ const StatusBadge = ({ status }) => {
 
 // ── MaintenanceTable ──────────────────────────────────────────────────────────
 export default function MaintenanceTable() {
+  const [maintenanceData, setMaintenanceData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
 
-  const handleSearch  = (e) => setSearch(e.target.value); // TODO: wire to real filter
+  const fetchMaintenance = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await maintenanceApi.getAll();
+      // Transform API response to match component format
+      const logs = (response.data || response || []).map(m => ({
+        logId: m.id,
+        vehicle: m.vehicle_plate || `Vehicle #${m.vehicle_id}`,
+        issue: m.description || m.service_type || "Maintenance",
+        date: m.start_date ? new Date(m.start_date).toLocaleDateString('en-GB') : "-",
+        cost: m.estimated_cost ? `₹${Number(m.estimated_cost).toLocaleString()}` : "-",
+        status: statusMap[m.status] || m.status,
+      }));
+      setMaintenanceData(logs);
+    } catch (err) {
+      setError(err.message);
+      console.error("Failed to fetch maintenance logs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMaintenance();
+  }, []);
+
+  const handleSearch = (e) => setSearch(e.target.value);
   const handleGroupBy = () => { /* TODO: implement group by */ };
-  const handleFilter  = () => { /* TODO: implement filter   */ };
-  const handleSortBy  = () => { /* TODO: implement sort by  */ };
-  const handleEdit    = (logId) => { /* TODO: open edit modal  */ };
-  const handleDelete  = (logId) => { /* TODO: confirm & delete */ };
+  const handleFilter = () => { /* TODO: implement filter   */ };
+  const handleSortBy = () => { /* TODO: implement sort by  */ };
+  const handleEdit = (logId) => { /* TODO: open edit modal  */ };
+
+  const handleDelete = async (logId) => {
+    if (!confirm("Are you sure you want to delete this maintenance log?")) return;
+    try {
+      await maintenanceApi.delete(logId);
+      setMaintenanceData(data => data.filter(m => m.logId !== logId));
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+    }
+  };
 
   const filtered = maintenanceData.filter(
     (r) =>
       r.vehicle.toLowerCase().includes(search.toLowerCase()) ||
       r.issue.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div style={styles.wrapper}>
+        <div style={{ padding: "60px 24px", textAlign: "center" }}>
+          <p style={{ color: "#6b7280", fontSize: 14 }}>Loading maintenance logs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.wrapper}>
+        <div style={{ padding: "60px 24px", textAlign: "center" }}>
+          <p style={{ color: "#f87171", fontSize: 14, marginBottom: 16 }}>Failed to load maintenance logs: {error}</p>
+          <button onClick={fetchMaintenance} style={{ background: "#00e5a0", color: "#000", padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.wrapper}>
@@ -61,7 +123,7 @@ export default function MaintenanceTable() {
         {/* Search */}
         <div style={styles.searchWrap}>
           <svg width="14" height="14" fill="none" stroke="#6b7280" strokeWidth="2" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
             value={search}
@@ -75,9 +137,9 @@ export default function MaintenanceTable() {
         <div style={styles.controls}>
           <button onClick={handleGroupBy} style={styles.ctrlBtn}>Group by</button>
           <div style={styles.divider} />
-          <button onClick={handleFilter}  style={styles.ctrlBtn}>Filter</button>
+          <button onClick={handleFilter} style={styles.ctrlBtn}>Filter</button>
           <div style={styles.divider} />
-          <button onClick={handleSortBy}  style={styles.ctrlBtn}>Sort by</button>
+          <button onClick={handleSortBy} style={styles.ctrlBtn}>Sort by</button>
         </div>
       </div>
 
@@ -117,7 +179,7 @@ export default function MaintenanceTable() {
                 </td>
                 <td style={styles.td}>
                   <div style={{ display: "flex", gap: 12 }}>
-                    <button onClick={() => handleEdit(item.logId)}   style={styles.actBtn("#9ca3af", "#00e5a0")}>Edit</button>
+                    <button onClick={() => handleEdit(item.logId)} style={styles.actBtn("#9ca3af", "#00e5a0")}>Edit</button>
                     <button onClick={() => handleDelete(item.logId)} style={styles.actBtn("#9ca3af", "#f87171")}>Delete</button>
                   </div>
                 </td>

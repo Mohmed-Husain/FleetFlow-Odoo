@@ -1,17 +1,48 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/dashboard/Sidebar";
-import Topbar  from "../../components/dashboard/Topbar";
+import Topbar from "../../components/dashboard/Topbar";
 import NewVehicleModal from "../../components/dashboard/NewVehicleModal";
-import VehicleTable    from "../../components/dashboard/VehicleTable";
+import VehicleTable from "../../components/dashboard/VehicleTable";
 import StatCard from "../../components/dashboard/StatCard";
+import { analyticsApi } from "@/lib/api";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 export default function VehicleRegistryPage() {
-  const [activeNav, setActiveNav]     = useState("Vehicle Registry");
-  const [showModal, setShowModal]     = useState(false);
+  const [activeNav, setActiveNav] = useState("Vehicle Registry");
+  const [showModal, setShowModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [stats, setStats] = useState({
+    activeFleet: 0,
+    maintenanceAlert: 0,
+    pendingCargo: 0,
+  });
+
+  // Fetch fleet stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const fleetStats = await analyticsApi.getFleetStats();
+        if (fleetStats) {
+          setStats({
+            activeFleet: fleetStats.active_vehicles || fleetStats.total_vehicles || 0,
+            maintenanceAlert: fleetStats.maintenance_vehicles || 0,
+            pendingCargo: fleetStats.scheduled_trips || 0,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch fleet stats:", err);
+      }
+    };
+    fetchStats();
+  }, [refreshKey]);
+
+  const handleVehicleCreated = () => {
+    setRefreshKey(k => k + 1);
+  };
 
   return (
-    <>
+    <ProtectedRoute>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');`}</style>
       <div className="flex h-screen bg-[#0d0d10] overflow-hidden font-[Outfit]">
         <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
@@ -22,7 +53,7 @@ export default function VehicleRegistryPage() {
             onFilter={() => { /* TODO: filter */ }}
             onSortBy={() => { /* TODO: sort */ }}
             actions={[
-              { label: "+ New Trip", variant: "primary", onClick: () => {} },
+              { label: "+ New Trip", variant: "primary", onClick: () => { } },
               { label: "+ New Vehicle", variant: "primary", onClick: () => setShowModal(true) },
             ]}
           />
@@ -37,19 +68,19 @@ export default function VehicleRegistryPage() {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard label="Active Fleet" value="220" color="#00e5a0" />
-              <StatCard label="Maintenance Alert" value="180" color="#ffc700" />
-              <StatCard label="Pending Cargo" value="20" color="#ff5733" />
+              <StatCard label="Active Fleet" value={stats.activeFleet.toString()} color="#00e5a0" />
+              <StatCard label="Maintenance Alert" value={stats.maintenanceAlert.toString()} color="#ffc700" />
+              <StatCard label="Pending Trips" value={stats.pendingCargo.toString()} color="#a78bfa" />
             </div>
 
             {/* Table */}
-            <VehicleTable />
+            <VehicleTable onRefresh={refreshKey} />
           </main>
         </div>
 
         {/* Modal */}
-        {showModal && <NewVehicleModal onClose={() => setShowModal(false)} />}
+        {showModal && <NewVehicleModal onClose={() => setShowModal(false)} onSuccess={handleVehicleCreated} />}
       </div>
-    </>
+    </ProtectedRoute>
   );
 }
