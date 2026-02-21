@@ -10,7 +10,7 @@ const serviceTypes = [
 // ── Field component ───────────────────────────────────────────────────────────
 const Field = ({ label, id, type = "text", placeholder = "", value, onChange }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-    <label htmlFor={id} style={styles.label}>{label}</label>
+    <label htmlFor={id} style={styles.label}>{label}{required && ' *'}</label>
     <input
       type={type}
       id={id}
@@ -18,6 +18,9 @@ const Field = ({ label, id, type = "text", placeholder = "", value, onChange }) 
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      required={required}
       style={styles.input}
       onFocus={(e) => {
         e.target.style.borderColor = "#00e5a0";
@@ -205,7 +208,7 @@ export default function NewServiceForm({ closeModal, onSuccess }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              style={{ ...styles.submitBtn, opacity: isSubmitting ? 0.6 : 1 }}
+              style={{ ...styles.submitBtn, opacity: isSubmitting ? 0.6 : 1, pointerEvents: isSubmitting ? 'none' : 'auto' }}
             >
               {isSubmitting ? (
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>

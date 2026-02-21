@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/dashboard/Sidebar";
 import Topbar from "../../components/dashboard/Topbar";
 import NewVehicleModal from "../../components/dashboard/NewVehicleModal";
@@ -48,10 +49,10 @@ export default function VehicleRegistryPage() {
         <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
         <div className="flex flex-col flex-1 overflow-hidden">
           <Topbar
-            onSearch={(val) => { /* TODO: filter vehicles by val */ }}
-            onGroupBy={() => { /* TODO: group by */ }}
-            onFilter={() => { /* TODO: filter */ }}
-            onSortBy={() => { /* TODO: sort */ }}
+            onSearch={handleSearch}
+            onGroupBy={handleGroupBy}
+            onFilter={handleFilter}
+            onSortBy={handleSortBy}
             actions={[
               { label: "+ New Trip", variant: "primary", onClick: () => { } },
               { label: "+ New Vehicle", variant: "primary", onClick: () => setShowModal(true) },
@@ -65,6 +66,80 @@ export default function VehicleRegistryPage() {
                 <p className="text-sm text-[#6b7280] mt-1">Manage and monitor all fleet assets</p>
               </div>
             </div>
+
+            {/* Filter & Sort Controls */}
+            {(showFilterMenu || showSortMenu) && (
+              <div className="bg-[#18181c] border border-[#27272e] rounded-lg p-4 flex gap-4">
+                {showFilterMenu && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => applyFilter("status", "Idle")}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#00e5a0]/20 text-[#9ca3af] hover:text-[#00e5a0] transition-all"
+                    >
+                      Idle
+                    </button>
+                    <button
+                      onClick={() => applyFilter("status", "On Trip")}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#00e5a0]/20 text-[#9ca3af] hover:text-[#00e5a0] transition-all"
+                    >
+                      On Trip
+                    </button>
+                    <button
+                      onClick={() => applyFilter("status", "Maintenance")}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#f59e0b]/20 text-[#9ca3af] hover:text-[#f59e0b] transition-all"
+                    >
+                      Maintenance
+                    </button>
+                    <button
+                      onClick={() => setFilters({})}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#f87171]/20 text-[#6b7280] hover:text-[#f87171] transition-all"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+                {showSortMenu && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => applySortBy("plate")}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#00e5a0]/20 text-[#9ca3af] hover:text-[#00e5a0] transition-all"
+                    >
+                      Plate
+                    </button>
+                    <button
+                      onClick={() => applySortBy("model")}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#00e5a0]/20 text-[#9ca3af] hover:text-[#00e5a0] transition-all"
+                    >
+                      Model
+                    </button>
+                    <button
+                      onClick={() => applySortBy("odometer")}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#00e5a0]/20 text-[#9ca3af] hover:text-[#00e5a0] transition-all"
+                    >
+                      Odometer
+                    </button>
+                    <button
+                      onClick={() => setSortBy("")}
+                      className="px-3 py-1 text-xs rounded-lg bg-[#27272e] hover:bg-[#f87171]/20 text-[#6b7280] hover:text-[#f87171] transition-all"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Active Filters Display */}
+            {Object.keys(filters).length > 0 && (
+              <div className="text-sm text-[#9ca3af]">
+                <span>Active filters: </span>
+                {Object.entries(filters).map(([key, val]) => (
+                  <span key={key} className="bg-[#00e5a0]/10 text-[#00e5a0] px-2 py-1 rounded-lg ml-2">
+                    {key}: {val}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

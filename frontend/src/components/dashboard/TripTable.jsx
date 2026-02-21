@@ -131,7 +131,7 @@ export default function TripTable() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#1c1c22"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                <td style={{ ...styles.td, color: "#e5e7eb" }}>{trip.fleetType}</td>
+                <td style={{ ...styles.td, color: "#e5e7eb" }}>{trip.type}</td>
                 <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.origin}</td>
                 <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.destination}</td>
                 <td style={styles.td}><StatusBadge status={trip.status} /></td>
