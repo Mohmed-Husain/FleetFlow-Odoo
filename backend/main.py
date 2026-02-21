@@ -1,80 +1,101 @@
 """
 main.py — FleetFlow API entrypoint.
-Shows how to mount the auth router and use RBAC guards on other routes.
+Mounts all API routers with CORS support for the Next.js frontend.
 """
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 import os
 from dotenv import load_dotenv
 load_dotenv()  # before anything else
 
 
-from auth import (
-    auth_router,
-    UserInDB,
-    AnyAuthenticatedUser,
-    ManagerOrAbove,
-    DispatcherOrAbove,
-    require_roles,
-    UserRole,
+from auth import auth_router
+from routes import (
+    vehicles_router,
+    drivers_router,
+    trips_router,
+    maintenance_router,
+    expenses_router,
+    fuel_logs_router,
+    analytics_router,
 )
 
-app = FastAPI(title="FleetFlow API", version="0.1.0")
+# ---------------------------------------------------------------------------
+# App Configuration
+# ---------------------------------------------------------------------------
 
-# Mount auth routes: /auth/register, /auth/login, /auth/refresh, /auth/me
+app = FastAPI(
+    title="FleetFlow API",
+    description="Fleet & Logistics Management System API",
+    version="1.0.0",
+)
+
+# ---------------------------------------------------------------------------
+# CORS Middleware — Allow Next.js frontend
+# ---------------------------------------------------------------------------
+
+# Configure allowed origins (update for production)
+origins = [
+    "http://localhost:3000",      # Next.js dev server
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    os.getenv("FRONTEND_URL", ""),  # Production frontend URL from env
+]
+# Filter out empty strings
+origins = [o for o in origins if o]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---------------------------------------------------------------------------
+# Mount Routers
+# ---------------------------------------------------------------------------
+
+# Auth routes: /auth/register, /auth/login, /auth/refresh, /auth/me
 app.include_router(auth_router)
 
-
-# ---------------------------------------------------------------------------
-# Example protected routes — replace bodies with real logic
-# ---------------------------------------------------------------------------
-
-@app.get("/vehicles")
-async def list_vehicles(user: UserInDB = DispatcherOrAbove):
-    """Dispatchers, Managers, and Admins can list vehicles."""
-    return {"message": f"Hello {user.first_name}, here are your vehicles."}
-
-
-@app.post("/vehicles")
-async def add_vehicle(user: UserInDB = ManagerOrAbove):
-    """Only Managers and Admins can register new vehicles."""
-    return {"message": "Vehicle added."}
-
-
-@app.get("/trips")
-async def list_trips(user: UserInDB = DispatcherOrAbove):
-    return {"message": "Trip list."}
-
-
-@app.post("/trips")
-async def create_trip(user: UserInDB = DispatcherOrAbove):
-    """Dispatchers create trips; cargo validation lives in the service layer."""
-    return {"message": "Trip created."}
-
-
-@app.get("/reports")
-async def financial_reports(
-    # Financial Analysts are 'viewer' by default in the schema; promote them
-    # to 'manager' if they should see reports, or add a dedicated analyst role.
-    user: UserInDB = AnyAuthenticatedUser,
-):
-    return {"message": "Reports."}
-
-
-@app.put("/drivers/{driver_id}/suspend")
-async def suspend_driver(
-    driver_id: int,
-    user: UserInDB = Depends(require_roles(UserRole.admin, UserRole.manager)),
-):
-    """Only Admins and Managers can suspend drivers."""
-    return {"message": f"Driver {driver_id} suspended by {user.email}."}
+# Resource routes
+app.include_router(vehicles_router)      # /vehicles
+app.include_router(drivers_router)       # /drivers
+app.include_router(trips_router)         # /trips
+app.include_router(maintenance_router)   # /maintenance
+app.include_router(expenses_router)      # /expenses
+app.include_router(fuel_logs_router)     # /fuel-logs
+app.include_router(analytics_router)     # /analytics
 
 
 # ---------------------------------------------------------------------------
-# Dependencies
+# Health Check
 # ---------------------------------------------------------------------------
-# pip install fastapi uvicorn "python-jose[cryptography]" passlib[bcrypt] pydantic[email]
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Health check endpoint for monitoring."""
+    return {"status": "healthy", "service": "fleetflow-api"}
+
+
+@app.get("/", tags=["Root"])
+async def root():
+    """API root endpoint."""
+    return {
+        "message": "Welcome to FleetFlow API",
+        "version": "1.0.0",
+        "docs": "/docs",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Run Configuration
+# ---------------------------------------------------------------------------
+# Dependencies:
+#   pip install fastapi uvicorn "python-jose[cryptography]" passlib[bcrypt] pydantic[email] supabase python-dotenv
 #
 # Run:
-#   uvicorn main:app --reload
+#   uvicorn main:app --reload --port 8000
