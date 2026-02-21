@@ -1,9 +1,14 @@
 "use client";
 import { trips } from "./dummydata";
 
+const tripData = [
+  { id: 1, fleetType: "Trailer Truck", origin: "Mumbai", destination: "Pune", status: "On way" },
+  // Add more trip data here
+];
+
 // ── Status badge colours ──────────────────────────────────────────────────────
 const statusStyle = {
-  "On Trip":     { background: "rgba(0,229,160,0.12)",  color: "#00e5a0",  dot: "#00e5a0"  },
+  "On way":     { background: "rgba(0,229,160,0.12)",  color: "#00e5a0",  dot: "#00e5a0"  },
   "Idle":        { background: "rgba(107,114,128,0.15)", color: "#9ca3af", dot: "#9ca3af"  },
   "Maintenance": { background: "rgba(245,158,11,0.12)", color: "#f59e0b",  dot: "#f59e0b"  },
 };
@@ -25,21 +30,25 @@ export default function TripTable() {
   return (
     <div style={styles.wrapper}>
       <div style={styles.header}>
-        <span style={styles.title}>Recent Trips</span>
-        <button style={styles.viewAll}>View all →</button>
+        <input type="text" placeholder="Search bar....." style={styles.searchBar} />
+        <div>
+          <button style={styles.actionButton}>Group by</button>
+          <button style={styles.actionButton}>Filter</button>
+          <button style={styles.actionButton}>Sort by...</button>
+        </div>
       </div>
 
       <div style={styles.tableWrap}>
         <table style={styles.table}>
           <thead>
             <tr>
-              {["Trip #", "Vehicle", "Driver", "Status"].map((h) => (
+              {["Trip Fleet Type", "Origin", "Destination", "Status"].map((h) => (
                 <th key={h} style={styles.th}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {trips.map((trip, i) => (
+            {tripData.map((trip, i) => (
               <tr
                 key={trip.id}
                 style={styles.tr}
@@ -47,13 +56,9 @@ export default function TripTable() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#1c1c22"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                <td style={{ ...styles.td, color: "#9ca3af", fontWeight: 600 }}>
-                  #{String(trip.id).padStart(3, "0")}
-                </td>
-                <td style={{ ...styles.td, color: "#e5e7eb", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-                  {trip.vehicle}
-                </td>
-                <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.driver}</td>
+                <td style={{ ...styles.td, color: "#e5e7eb" }}>{trip.fleetType}</td>
+                <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.origin}</td>
+                <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.destination}</td>
                 <td style={styles.td}><StatusBadge status={trip.status} /></td>
               </tr>
             ))}
@@ -77,6 +82,24 @@ const styles = {
     justifyContent: "space-between",
     padding: "18px 24px 14px",
     borderBottom: "1px solid #1f1f26",
+  },
+  searchBar: {
+    background: "#2a2a30",
+    border: "1px solid #3a3a42",
+    borderRadius: 8,
+    color: "#f0f0f5",
+    padding: "8px 12px",
+    fontSize: 14,
+  },
+  actionButton: {
+    background: "#2a2a30",
+    border: "1px solid #3a3a42",
+    borderRadius: 8,
+    color: "#f0f0f5",
+    padding: "8px 12px",
+    fontSize: 14,
+    marginLeft: 8,
+    cursor: "pointer",
   },
   title: {
     fontFamily: "'Outfit', sans-serif",
