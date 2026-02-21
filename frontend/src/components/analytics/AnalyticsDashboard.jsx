@@ -71,19 +71,73 @@ export default function AnalyticsDashboard() {
   const [barChartData, setBarChartData] = useState([]);
   const [financialSummaryData, setFinancialSummaryData] = useState([]);
   const [kpiCards, setKpiCards] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   // Load real data on mount
   useEffect(() => {
     initializeStorage();
+    refreshData();
     
+    // Refresh data every 30 seconds for real-time feel
+    const interval = setInterval(() => {
+      refreshData();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const refreshData = () => {
     setLineChartData(getFuelEfficiencyTrend());
     setBarChartData(getTopCostliestVehicles());
     setFinancialSummaryData(getFinancialSummary());
     setKpiCards(getAnalyticsKPIs());
-  }, []);
+    setLastUpdate(new Date());
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, fontFamily: "'Outfit', sans-serif" }}>
+
+      {/* Last Updated Info */}
+      {lastUpdate && (
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px 16px",
+          background: "rgba(0, 229, 160, 0.08)",
+          border: "1px solid rgba(0, 229, 160, 0.2)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "#00e5a0",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#00e5a0", animation: "pulse 2s infinite" }} />
+            Last updated: {lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • Live Data
+          </div>
+          <button
+            onClick={refreshData}
+            style={{
+              background: "rgba(0, 229, 160, 0.15)",
+              border: "1px solid rgba(0, 229, 160, 0.3)",
+              color: "#00e5a0",
+              padding: "4px 12px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(0, 229, 160, 0.25)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(0, 229, 160, 0.15)";
+            }}
+          >
+            ↺ Refresh
+          </button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -167,6 +221,17 @@ export default function AnalyticsDashboard() {
           </table>
         </div>
       </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
 
     </div>
   );

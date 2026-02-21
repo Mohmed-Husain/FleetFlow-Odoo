@@ -198,15 +198,30 @@ export const groupItems = (items, groupBy) => {
 
 // Get fuel efficiency trend (monthly data)
 export const getFuelEfficiencyTrend = () => {
-  const vehicles = getVehicles();
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  // Get current date for realistic monthly data
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const months = [];
   
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), currentMonth - i, 1);
+    const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+    months.push(monthName);
+  }
+  
+  // Simulate realistic fuel efficiency trending with seasonal variations
   return months.map((name, idx) => {
-    // Simulate fuel efficiency trending based on vehicle count and odometer
-    const baseValue = 12 + idx * 0.5;
-    const variance = Math.sin(idx * 0.5) * 3;
-    const value = Math.round((baseValue + variance + Math.random() * 2) * 10) / 10;
-    return { name, value: Math.max(8, value) };
+    // Base efficiency: 8-12 km/L for Indian trucks
+    const baseValue = 10;
+    // Slight upward trend as fleet gets optimized
+    const trend = idx * 0.15;
+    // Seasonal variation (summer slightly better)
+    const seasonal = Math.sin((idx - 3) / 12 * Math.PI * 2) * 1.5;
+    // Random daily variations
+    const variance = Math.random() * 1.2 - 0.6;
+    
+    const value = Math.round((baseValue + trend + seasonal + variance) * 10) / 10;
+    return { name, value: Math.max(7, Math.min(14, value)) };
   });
 };
 
@@ -214,17 +229,24 @@ export const getFuelEfficiencyTrend = () => {
 export const getTopCostliestVehicles = () => {
   const vehicles = getVehicles();
   
-  // Calculate cost based on vehicle type, mileage, and age
+  // Calculate cost based on vehicle type, mileage, age, and usage
   const costs = vehicles.map((v) => {
-    const baseCost = v.type === "Heavy" ? 80 : v.type === "Medium" ? 50 : 30;
-    const mileageCost = (v.odometer || 0) / 10000;
+    // Base fuel cost by type (monthly)
+    const baseFuelCost = v.type === "Heavy" ? 45000 : v.type === "Medium" ? 28000 : 18000;
+    
+    // Maintenance cost based on age and mileage
     const age = 2024 - parseInt(v.model);
-    const ageCost = age * 5;
-    const totalCost = Math.round(baseCost + mileageCost + ageCost);
+    const mileageCategory = v.odometer > 150000 ? 1.5 : v.odometer > 100000 ? 1.2 : 1.0;
+    const maintenanceCost = (15000 + age * 3000) * mileageCategory;
+    
+    // Operational cost (insurance, tolls)
+    const operationalCost = v.type === "Heavy" ? 12000 : 8000;
+    
+    const totalMonthlyCost = Math.round(baseFuelCost + maintenanceCost + operationalCost);
     
     return {
       name: v.plate.split("-").slice(0, 2).join("-").substring(0, 6),
-      cost: totalCost,
+      cost: Math.round(totalMonthlyCost / 10000),
       plate: v.plate,
     };
   });
@@ -237,32 +259,54 @@ export const getFinancialSummary = () => {
   const vehicles = getVehicles();
   const trips = getTrips();
   
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+  // Use current date to generate realistic monthly data
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const months = [];
+  
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), currentMonth - i, 1);
+    const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+    months.push(monthName);
+  }
   
   return months.map((month, idx) => {
-    // Estimate monthly metrics
-    const tripCount = trips.length + idx * 2;
-    const avgRevenuePerTrip = 35000; // ₹35k per trip
+    // Realistic trip count: 20-35 trips per month
+    const baseTrips = 25 + Math.floor(Math.random() * 10);
+    const tripCount = baseTrips + (idx * 2);
+    
+    // Revenue: ₹40k to ₹80k per trip depending on distance/vehicle type
+    const avgRevenuePerTrip = 50000 + Math.floor(Math.random() * 30000);
     const totalRevenue = tripCount * avgRevenuePerTrip;
     
     const heavyVehicles = vehicles.filter(v => v.type === "Heavy").length;
     const mediumVehicles = vehicles.filter(v => v.type === "Medium").length;
     const miniVehicles = vehicles.filter(v => v.type === "Mini").length;
     
-    const fuelCost = (heavyVehicles * 5 + mediumVehicles * 3 + miniVehicles * 2) * 100000;
-    const maintenanceCost = (heavyVehicles * 2 + mediumVehicles * 1 + miniVehicles * 0.5) * 100000;
-    const totalCost = fuelCost + maintenanceCost;
+    // Realistic fuel costs: ₹8-15 per km, average trip 800km
+    const avgTripDistance = 800;
+    const fuelCostPerKm = 10;
+    const totalFuelCost = tripCount * avgTripDistance * fuelCostPerKm * (1 + Math.random() * 0.2);
+    
+    // Maintenance cost: ₹30k-50k per vehicle per month
+    const maintenanceCostPerVehicle = 35000 + Math.random() * 15000;
+    const maintenanceCost = vehicles.length * maintenanceCostPerVehicle;
+    
+    const operationalCosts = 50000; // Driver salaries, insurance, tolls, etc.
+    const totalCost = totalFuelCost + maintenanceCost + operationalCosts;
     const netProfit = totalRevenue - totalCost;
     
     const formatRupees = (num) => {
-      const lakhs = Math.round(num / 100000);
-      return `₹${lakhs}L`;
+      if (num >= 1000000) {
+        return `₹${(num / 100000).toFixed(1)}L`;
+      }
+      return `₹${Math.round(num / 1000)}K`;
     };
     
     return {
       month,
       revenue: formatRupees(totalRevenue),
-      fuelCost: formatRupees(fuelCost),
+      fuelCost: formatRupees(totalFuelCost),
       maintenance: formatRupees(maintenanceCost),
       netProfit: formatRupees(Math.max(0, netProfit)),
     };
@@ -279,33 +323,49 @@ export const getAnalyticsKPIs = () => {
   const mediumVehicles = vehicles.filter(v => v.type === "Medium").length;
   const miniVehicles = vehicles.filter(v => v.type === "Mini").length;
   
-  const totalFuelCost = (heavyVehicles * 5 + mediumVehicles * 3 + miniVehicles * 2) * 12 * 100000;
+  // Realistic fuel cost calculation
+  const avgTripDistance = 800;
+  const fuelCostPerKm = 10;
+  const monthlyTrips = 25;
+  const monthlyFuelCost = monthlyTrips * avgTripDistance * fuelCostPerKm * (1 + 0.15);
+  const totalFuelCost = monthlyFuelCost * 12;
   
   // Fleet ROI calculation
   const activeVehicles = vehicles.filter(v => v.status !== "Maintenance").length;
   const totalVehicles = vehicles.length;
   const utilizationRate = Math.round((activeVehicles / totalVehicles) * 100);
-  const roi = utilizationRate > 70 ? 12.5 : utilizationRate > 50 ? 8.3 : 5.2;
+  
+  // Realistic ROI: 15-25% for well-performing fleets
+  let roi = 8;
+  if (utilizationRate > 80) roi = 24.5;
+  else if (utilizationRate > 70) roi = 18.3;
+  else if (utilizationRate > 60) roi = 14.2;
+  else if (utilizationRate > 50) roi = 11.8;
   
   // Calculate on-trip percentage
   const onTripCount = trips.filter(t => t.status === "On Trip").length;
   const utilizationPercent = Math.round((onTripCount / (trips.length || 1)) * 100);
   
+  // Monthly revenue estimate
+  const avgRevenuePerTrip = 60000;
+  const monthlyRevenue = monthlyTrips * avgRevenuePerTrip;
+  const yearlyRevenue = monthlyRevenue * 12;
+  
   return [
     {
-      label: "Total Fuel Cost",
-      value: `₹${Math.round(totalFuelCost / 100000 / 10)}L`,
-      color: "#f59e0b",
+      label: "Monthly Revenue",
+      value: `₹${Math.round(monthlyRevenue / 100000 * 10) / 10}L`,
+      color: "#00e5a0",
     },
     {
       label: "Fleet ROI",
       value: `+${roi}%`,
-      color: "#00e5a0",
+      color: "#a78bfa",
     },
     {
       label: "Utilization Rate",
       value: `${utilizationPercent}%`,
-      color: "#a78bfa",
+      color: "#f59e0b",
     },
   ];
 };
