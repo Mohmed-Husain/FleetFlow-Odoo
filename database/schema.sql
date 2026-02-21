@@ -1,7 +1,7 @@
 -- ============================================================
 -- FleetFlow: Modular Fleet & Logistics Management System
--- Database Schema (PostgreSQL) — Normalized (3NF) & Minimized
--- Version: 2.0
+-- Database Schema (PostgreSQL) — Normalized (3NF), Lean
+-- Version: 3.0
 -- ============================================================
 
 -- ============================================================
@@ -24,30 +24,23 @@ CREATE TYPE document_type       AS ENUM ('insurance', 'registration', 'fitness_c
 
 
 -- ============================================================
--- 1. USERS  (authentication & authorization)
+-- 1. USERS
 -- ============================================================
 
 CREATE TABLE users (
     id              SERIAL PRIMARY KEY,
-    username        VARCHAR(50)     NOT NULL UNIQUE,
     email           VARCHAR(255)    NOT NULL UNIQUE,
     password_hash   VARCHAR(255)    NOT NULL,
     role            user_role       NOT NULL DEFAULT 'viewer',
     first_name      VARCHAR(100)    NOT NULL,
-    last_name       VARCHAR(100)    NOT NULL,
-    phone           VARCHAR(20),
-    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    last_name       VARCHAR(100)    NOT NULL
 );
 
 CREATE INDEX idx_users_role ON users(role);
 
--- Removed: avatar_url (cosmetic), last_login_at (session concern)
-
 
 -- ============================================================
--- 2. VEHICLES  (fleet registry)
+-- 2. VEHICLES
 -- ============================================================
 
 CREATE TABLE vehicles (
@@ -60,24 +53,17 @@ CREATE TABLE vehicles (
     fuel_type               fuel_type       NOT NULL DEFAULT 'diesel',
     max_load_capacity_kg    DECIMAL(10,2)   NOT NULL CHECK (max_load_capacity_kg > 0),
     current_odometer_km     DECIMAL(12,2)   NOT NULL DEFAULT 0 CHECK (current_odometer_km >= 0),
-    status                  vehicle_status  NOT NULL DEFAULT 'idle',
-    is_active               BOOLEAN         NOT NULL DEFAULT TRUE,
-    created_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    status                  vehicle_status  NOT NULL DEFAULT 'idle'
 );
 
 CREATE INDEX idx_vehicles_status ON vehicles(status);
 CREATE INDEX idx_vehicles_type   ON vehicles(vehicle_type);
 
--- Removed: color, vin_number, registration_date, insurance_expiry (→ vehicle_documents),
---          purchase_date, purchase_price (non-operational), notes
-
 
 -- ============================================================
--- 3. DRIVERS  (profile extending users)
+-- 3. DRIVERS
 -- ============================================================
--- Derived stats (total_trips, completion_rate, total_complaints, is_available)
--- are computed in vw_driver_performance — no redundant storage (3NF).
+-- Derived stats computed in vw_driver_performance (3NF).
 
 CREATE TABLE drivers (
     id                  SERIAL PRIMARY KEY,
@@ -85,21 +71,15 @@ CREATE TABLE drivers (
     license_number      VARCHAR(50)     NOT NULL UNIQUE,
     license_expiry      DATE            NOT NULL,
     safety_score        DECIMAL(5,2)    NOT NULL DEFAULT 100.00 CHECK (safety_score BETWEEN 0 AND 100),
-    duty_status         duty_status     NOT NULL DEFAULT 'off_duty',
-    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    duty_status         duty_status     NOT NULL DEFAULT 'off_duty'
 );
 
 CREATE INDEX idx_drivers_duty           ON drivers(duty_status);
 CREATE INDEX idx_drivers_license_expiry ON drivers(license_expiry);
 
--- Removed: date_of_birth, completion_rate (derived), total_trips (derived),
---          total_complaints (derived), is_available (derived from duty_status),
---          emergency_contact_*, address, notes
-
 
 -- ============================================================
--- 4. TRIPS  (dispatching & delivery tracking)
+-- 4. TRIPS
 -- ============================================================
 
 CREATE TABLE trips (
@@ -113,11 +93,7 @@ CREATE TABLE trips (
     revenue                 DECIMAL(14,2)   NOT NULL DEFAULT 0 CHECK (revenue >= 0),
     status                  trip_status     NOT NULL DEFAULT 'scheduled',
     scheduled_departure     TIMESTAMPTZ     NOT NULL,
-    actual_departure        TIMESTAMPTZ,
-    actual_arrival          TIMESTAMPTZ,
-    created_by              INTEGER         REFERENCES users(id) ON DELETE SET NULL,
-    created_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    actual_arrival          TIMESTAMPTZ
 );
 
 CREATE INDEX idx_trips_vehicle   ON trips(vehicle_id);
@@ -125,12 +101,9 @@ CREATE INDEX idx_trips_driver    ON trips(driver_id);
 CREATE INDEX idx_trips_status    ON trips(status);
 CREATE INDEX idx_trips_departure ON trips(scheduled_departure);
 
--- Removed: cargo_description, estimated_fuel_cost (app-computable),
---          actual_fuel_cost (derived from fuel_logs), estimated_arrival, notes
-
 
 -- ============================================================
--- 5. MAINTENANCE_LOGS  (service records)
+-- 5. MAINTENANCE_LOGS
 -- ============================================================
 
 CREATE TABLE maintenance_logs (
@@ -142,9 +115,6 @@ CREATE TABLE maintenance_logs (
     completion_date     DATE,
     cost                DECIMAL(12,2)       NOT NULL DEFAULT 0 CHECK (cost >= 0),
     status              maintenance_status  NOT NULL DEFAULT 'new',
-    created_by          INTEGER             REFERENCES users(id) ON DELETE SET NULL,
-    created_at          TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
 
     CONSTRAINT chk_maintenance_dates CHECK (
         completion_date IS NULL OR start_date IS NULL OR completion_date >= start_date
@@ -154,11 +124,9 @@ CREATE TABLE maintenance_logs (
 CREATE INDEX idx_maintenance_vehicle ON maintenance_logs(vehicle_id);
 CREATE INDEX idx_maintenance_status  ON maintenance_logs(status);
 
--- Removed: reported_date (≈ created_at), vendor_name, vendor_contact, notes
-
 
 -- ============================================================
--- 6. EXPENSES  (trip & operational costs)
+-- 6. EXPENSES
 -- ============================================================
 
 CREATE TABLE expenses (
@@ -168,21 +136,16 @@ CREATE TABLE expenses (
     expense_type        expense_type    NOT NULL,
     amount              DECIMAL(12,2)   NOT NULL CHECK (amount > 0),
     description         VARCHAR(500),
-    expense_date        DATE            NOT NULL DEFAULT CURRENT_DATE,
-    created_by          INTEGER         REFERENCES users(id) ON DELETE SET NULL,
-    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    expense_date        DATE            NOT NULL DEFAULT CURRENT_DATE
 );
 
 CREATE INDEX idx_expenses_trip    ON expenses(trip_id);
 CREATE INDEX idx_expenses_vehicle ON expenses(vehicle_id);
 CREATE INDEX idx_expenses_type    ON expenses(expense_type);
 
--- Removed: driver_id (derivable via trip_id → trips.driver_id), receipt_url
-
 
 -- ============================================================
--- 7. FUEL_LOGS  (fuel fill-up records)
+-- 7. FUEL_LOGS
 -- ============================================================
 
 CREATE TABLE fuel_logs (
@@ -194,18 +157,15 @@ CREATE TABLE fuel_logs (
     cost_per_liter      DECIMAL(8,2)    NOT NULL CHECK (cost_per_liter > 0),
     total_cost          DECIMAL(12,2)   NOT NULL GENERATED ALWAYS AS (liters * cost_per_liter) STORED,
     odometer_at_fill    DECIMAL(12,2)   NOT NULL CHECK (odometer_at_fill >= 0),
-    fuel_date           DATE            NOT NULL DEFAULT CURRENT_DATE,
-    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    fuel_date           DATE            NOT NULL DEFAULT CURRENT_DATE
 );
 
 CREATE INDEX idx_fuel_vehicle ON fuel_logs(vehicle_id);
 CREATE INDEX idx_fuel_trip    ON fuel_logs(trip_id);
 
--- Removed: fuel_station, created_by (driver_id suffices)
-
 
 -- ============================================================
--- 8. DRIVER_COMPLAINTS  (incident tracking)
+-- 8. DRIVER_COMPLAINTS
 -- ============================================================
 
 CREATE TABLE driver_complaints (
@@ -217,19 +177,15 @@ CREATE TABLE driver_complaints (
     severity            severity_level      NOT NULL DEFAULT 'medium',
     status              complaint_status    NOT NULL DEFAULT 'open',
     reported_by         INTEGER             REFERENCES users(id) ON DELETE SET NULL,
-    resolved_at         TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ         NOT NULL DEFAULT NOW()
+    resolved_at         TIMESTAMPTZ
 );
 
 CREATE INDEX idx_complaints_driver ON driver_complaints(driver_id);
 CREATE INDEX idx_complaints_status ON driver_complaints(status);
 
--- Removed: resolution_notes (status + resolved_at sufficient)
-
 
 -- ============================================================
--- 9. VEHICLE_DOCUMENTS  (compliance docs)
+-- 9. VEHICLE_DOCUMENTS
 -- ============================================================
 
 CREATE TABLE vehicle_documents (
@@ -239,8 +195,6 @@ CREATE TABLE vehicle_documents (
     document_number     VARCHAR(100)    NOT NULL,
     issue_date          DATE            NOT NULL,
     expiry_date         DATE            NOT NULL,
-    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
 
     CONSTRAINT chk_doc_dates   CHECK (expiry_date >= issue_date),
     CONSTRAINT uq_vehicle_doc  UNIQUE (vehicle_id, document_type, document_number)
@@ -249,33 +203,10 @@ CREATE TABLE vehicle_documents (
 CREATE INDEX idx_vdocs_vehicle ON vehicle_documents(vehicle_id);
 CREATE INDEX idx_vdocs_expiry  ON vehicle_documents(expiry_date);
 
--- Removed: document_url, notes
--- Removed entire audit_log table (add back when needed; not core for hackathon)
-
 
 -- ============================================================
--- TRIGGERS & FUNCTIONS  (7 functions, 14 trigger bindings)
+-- TRIGGERS & FUNCTIONS  (5 functions, 5 triggers)
 -- ============================================================
-
--- Auto-update updated_at on any row change -----------------
-
-CREATE OR REPLACE FUNCTION fn_update_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_users_updated       BEFORE UPDATE ON users             FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-CREATE TRIGGER trg_vehicles_updated    BEFORE UPDATE ON vehicles          FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-CREATE TRIGGER trg_drivers_updated     BEFORE UPDATE ON drivers           FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-CREATE TRIGGER trg_trips_updated       BEFORE UPDATE ON trips             FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-CREATE TRIGGER trg_maintenance_updated BEFORE UPDATE ON maintenance_logs  FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-CREATE TRIGGER trg_expenses_updated    BEFORE UPDATE ON expenses          FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-CREATE TRIGGER trg_complaints_updated  BEFORE UPDATE ON driver_complaints FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-CREATE TRIGGER trg_vdocs_updated       BEFORE UPDATE ON vehicle_documents FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
-
 
 -- Prevent cargo overload ----------------------------------
 
@@ -414,8 +345,6 @@ CREATE TRIGGER trg_sync_odometer
     AFTER INSERT ON fuel_logs
     FOR EACH ROW EXECUTE FUNCTION fn_sync_odometer();
 
--- Removed: fn_update_driver_complaint_count (total_complaints now computed in view)
-
 
 -- ============================================================
 -- VIEWS  (Dashboard & Analytics)
@@ -425,14 +354,14 @@ CREATE TRIGGER trg_sync_odometer
 
 CREATE VIEW vw_dashboard_kpis AS
 SELECT
-    (SELECT COUNT(*) FROM vehicles WHERE status = 'on_trip' AND is_active)
+    (SELECT COUNT(*) FROM vehicles WHERE status = 'on_trip')
         AS active_fleet,
-    (SELECT COUNT(*) FROM vehicles WHERE status = 'in_shop' AND is_active)
+    (SELECT COUNT(*) FROM vehicles WHERE status = 'in_shop')
         AS maintenance_alerts,
     (SELECT CASE WHEN COUNT(*) = 0 THEN 0
             ELSE ROUND(COUNT(*) FILTER (WHERE status = 'on_trip') * 100.0 / COUNT(*), 1)
             END
-     FROM vehicles WHERE is_active AND status != 'retired')
+     FROM vehicles WHERE status != 'retired')
         AS utilization_rate,
     (SELECT COUNT(*) FROM trips WHERE status = 'scheduled')
         AS pending_cargo;
@@ -472,7 +401,7 @@ LEFT JOIN (
     FROM trips WHERE status = 'delivered'
     GROUP BY vehicle_id
 ) t ON t.vehicle_id = v.id
-WHERE v.is_active;
+WHERE v.status != 'retired';
 
 
 -- Driver performance (all derived stats computed here) ----
@@ -541,5 +470,5 @@ ORDER BY month DESC;
 -- SEED DATA
 -- ============================================================
 
-INSERT INTO users (username, email, password_hash, role, first_name, last_name)
-VALUES ('admin', 'admin@fleetflow.com', '$2b$10$placeholder_hash_replace_me', 'admin', 'System', 'Admin');
+INSERT INTO users (email, password_hash, role, first_name, last_name)
+VALUES ('admin@fleetflow.com', '$2b$10$placeholder_hash_replace_me', 'admin', 'System', 'Admin');
