@@ -1,15 +1,5 @@
 "use client";
-import { useState } from "react";
-
-// ── Dummy Data ────────────────────────────────────────────────────────────────
-const maintenanceData = [
-  { logId: 321, vehicle: "TATA 407",    issue: "Engine Issue",       date: "20/02/2025", cost: "₹10,000", status: "New"         },
-  { logId: 322, vehicle: "Ashok Leyland",issue: "Brake Replacement", date: "18/02/2025", cost: "₹6,500",  status: "In Progress" },
-  { logId: 323, vehicle: "MH-12-AB-1234",issue: "Oil Change",        date: "15/02/2025", cost: "₹2,200",  status: "Completed"   },
-  { logId: 324, vehicle: "GJ-01-CD-5678",issue: "Tyre Puncture",     date: "12/02/2025", cost: "₹800",    status: "Completed"   },
-  { logId: 325, vehicle: "DL-03-EF-9012",issue: "AC Repair",         date: "10/02/2025", cost: "₹4,500",  status: "In Progress" },
-  { logId: 326, vehicle: "KA-05-GH-3456",issue: "Battery Dead",      date: "08/02/2025", cost: "₹3,200",  status: "New"         },
-];
+import { useState, useMemo } from "react";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const statusCfg = {
@@ -35,21 +25,103 @@ const StatusBadge = ({ status }) => {
 };
 
 // ── MaintenanceTable ──────────────────────────────────────────────────────────
-export default function MaintenanceTable() {
+export default function MaintenanceTable({ maintenance = [], onEditService, onDeleteService }) {
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [sortBy, setSortBy] = useState("logId");
+  const [groupBy, setGroupBy] = useState("none");
+  const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
-  const handleSearch  = (e) => setSearch(e.target.value); // TODO: wire to real filter
-  const handleGroupBy = () => { /* TODO: implement group by */ };
-  const handleFilter  = () => { /* TODO: implement filter   */ };
-  const handleSortBy  = () => { /* TODO: implement sort by  */ };
-  const handleEdit    = (logId) => { /* TODO: open edit modal  */ };
-  const handleDelete  = (logId) => { /* TODO: confirm & delete */ };
+  const handleSearch = (e) => setSearch(e.target.value);
 
-  const filtered = maintenanceData.filter(
-    (r) =>
-      r.vehicle.toLowerCase().includes(search.toLowerCase()) ||
-      r.issue.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter
+  const filtered = useMemo(() => {
+    return maintenance.filter((r) => {
+      const matchesSearch = 
+        r.vehicle.toLowerCase().includes(search.toLowerCase()) ||
+        r.issue.toLowerCase().includes(search.toLowerCase());
+      
+      const matchesStatus = filterStatus === "All" || r.status === filterStatus;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [maintenance, search, filterStatus]);
+
+  // Sort
+  const sorted = useMemo(() => {
+    const sorted = [...filtered];
+    
+    switch(sortBy) {
+      case "logIdAsc":
+        sorted.sort((a, b) => a.logId - b.logId);
+        break;
+      case "logIdDesc":
+        sorted.sort((a, b) => b.logId - a.logId);
+        break;
+      case "vehicle":
+        sorted.sort((a, b) => a.vehicle.localeCompare(b.vehicle));
+        break;
+      case "cost":
+        sorted.sort((a, b) => {
+          const aVal = parseInt(a.cost.replace(/[^0-9]/g, ''));
+          const bVal = parseInt(b.cost.replace(/[^0-9]/g, ''));
+          return bVal - aVal;
+        });
+        break;
+      case "status":
+        sorted.sort((a, b) => a.status.localeCompare(b.status));
+        break;
+      case "date":
+        sorted.sort((a, b) => new Date(b.date.split('/').reverse().join('-')) - new Date(a.date.split('/').reverse().join('-')));
+        break;
+      default:
+        break;
+    }
+    
+    return sorted;
+  }, [filtered, sortBy]);
+
+  // Group
+  const grouped = useMemo(() => {
+    if (groupBy === "none") {
+      return { ungrouped: sorted };
+    }
+
+    const grouped = {};
+    
+    sorted.forEach(item => {
+      let key;
+      
+      if (groupBy === "vehicle") {
+        key = item.vehicle;
+      } else if (groupBy === "status") {
+        key = item.status;
+      } else if (groupBy === "date") {
+        key = item.date;
+      }
+      
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(item);
+    });
+    
+    return grouped;
+  }, [sorted, groupBy]);
+
+  const buttonStyle = { 
+    background: "none", 
+    border: "none", 
+    color: "#9ca3af", 
+    fontSize: 12, 
+    fontFamily: "'Outfit', sans-serif", 
+    fontWeight: 500, 
+    padding: "0 12px", 
+    cursor: "pointer",
+    position: 'relative'
+  };
 
   return (
     <div style={styles.wrapper}>
@@ -72,67 +144,229 @@ export default function MaintenanceTable() {
         </div>
 
         {/* Controls */}
-        <div style={styles.controls}>
-          <button onClick={handleGroupBy} style={styles.ctrlBtn}>Group by</button>
-          <div style={styles.divider} />
-          <button onClick={handleFilter}  style={styles.ctrlBtn}>Filter</button>
-          <div style={styles.divider} />
-          <button onClick={handleSortBy}  style={styles.ctrlBtn}>Sort by</button>
+        <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowGroupMenu(!showGroupMenu)} style={buttonStyle}>Group by</button>
+            {showGroupMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                background: "#111114",
+                border: "1px solid #27272e",
+                borderRadius: 8,
+                marginTop: '0.25rem',
+                zIndex: 10,
+                minWidth: '150px'
+              }}>
+                {['none', 'vehicle', 'status', 'date'].map(option => (
+                  <button
+                    key={option}
+                    onClick={() => {
+                      setGroupBy(option);
+                      setShowGroupMenu(false);
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      background: groupBy === option ? '#27272e' : 'transparent',
+                      border: 'none',
+                      color: '#9ca3af',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontFamily: "'Outfit', sans-serif",
+                      borderRadius: option === 'none' ? '8px 8px 0 0' : (option === 'date' ? '0 0 8px 8px' : '0'),
+                    }}
+                  >
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div style={{ width: 1, height: 18, background: "#27272e" }} />
+          
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowFilterMenu(!showFilterMenu)} style={buttonStyle}>Filter</button>
+            {showFilterMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                background: "#111114",
+                border: "1px solid #27272e",
+                borderRadius: 8,
+                marginTop: '0.25rem',
+                zIndex: 10,
+                minWidth: '150px'
+              }}>
+                {['All', 'New', 'In Progress', 'Completed'].map(option => (
+                  <button
+                    key={option}
+                    onClick={() => {
+                      setFilterStatus(option);
+                      setShowFilterMenu(false);
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      background: filterStatus === option ? '#27272e' : 'transparent',
+                      border: 'none',
+                      color: '#9ca3af',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontFamily: "'Outfit', sans-serif",
+                      borderRadius: option === 'All' ? '8px 8px 0 0' : (option === 'Completed' ? '0 0 8px 8px' : '0'),
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div style={{ width: 1, height: 18, background: "#27272e" }} />
+          
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowSortMenu(!showSortMenu)} style={buttonStyle}>Sort by</button>
+            {showSortMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                background: "#111114",
+                border: "1px solid #27272e",
+                borderRadius: 8,
+                marginTop: '0.25rem',
+                zIndex: 10,
+                minWidth: '180px'
+              }}>
+                {[
+                  { value: 'logIdAsc', label: 'Log ID (Asc)' },
+                  { value: 'logIdDesc', label: 'Log ID (Desc)' },
+                  { value: 'vehicle', label: 'Vehicle Name' },
+                  { value: 'cost', label: 'Cost (High)' },
+                  { value: 'date', label: 'Date (Recent)' },
+                  { value: 'status', label: 'Status' }
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setSortBy(option.value);
+                      setShowSortMenu(false);
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px 12px',
+                      textAlign: 'left',
+                      background: sortBy === option.value ? '#27272e' : 'transparent',
+                      border: 'none',
+                      color: '#9ca3af',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontFamily: "'Outfit', sans-serif",
+                      borderRadius: option.value === 'logIdAsc' ? '8px 8px 0 0' : (option.value === 'status' ? '0 0 8px 8px' : '0'),
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Table */}
       <div style={{ overflowX: "auto" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              {["Log ID", "Vehicle", "Issue / Service", "Date", "Cost", "Status", "Actions"].map((h) => (
-                <th key={h} style={styles.th}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((item) => (
-              <tr
-                key={item.logId}
-                style={styles.tr}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#1c1c22")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              >
-                <td style={{ ...styles.td, fontFamily: "'DM Mono', monospace", color: "#6b7280", fontWeight: 600 }}>
-                  #{item.logId}
-                </td>
-                <td style={{ ...styles.td, color: "#e5e7eb", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-                  {item.vehicle}
-                </td>
-                <td style={{ ...styles.td, color: "#d1d5db" }}>{item.issue}</td>
-                <td style={{ ...styles.td, color: "#9ca3af", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-                  {item.date}
-                </td>
-                <td style={{ ...styles.td, color: "#d1d5db", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-                  {item.cost}
-                </td>
-                <td style={styles.td}>
-                  <StatusBadge status={item.status} />
-                </td>
-                <td style={styles.td}>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button onClick={() => handleEdit(item.logId)}   style={styles.actBtn("#9ca3af", "#00e5a0")}>Edit</button>
-                    <button onClick={() => handleDelete(item.logId)} style={styles.actBtn("#9ca3af", "#f87171")}>Delete</button>
+        {sorted.length === 0 ? (
+          <div style={{ padding: "40px 24px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>
+            No records match your search.
+          </div>
+        ) : (
+          <>
+            {Object.entries(grouped).map(([groupKey, items]) => (
+              <div key={groupKey}>
+                {groupBy !== 'none' && (
+                  <div style={{ 
+                    background: "#111114", 
+                    padding: '0.75rem 1rem', 
+                    marginTop: '0.5rem', 
+                    marginBottom: '0.5rem',
+                    borderRadius: 4,
+                    fontWeight: 'bold',
+                    color: '#9ca3af',
+                    borderLeft: '3px solid #00e5a0',
+                    fontSize: 12
+                  }}>
+                    {groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}: {groupKey}
                   </div>
-                </td>
-              </tr>
+                )}
+                <table style={styles.table}>
+                  {groupBy === 'none' && (
+                    <thead>
+                      <tr>
+                        {["Log ID", "Vehicle", "Issue / Service", "Date", "Cost", "Status", "Actions"].map((h) => (
+                          <th key={h} style={styles.th}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                  )}
+                  <tbody>
+                    {items.map((item) => (
+                      <tr
+                        key={item.logId}
+                        style={styles.tr}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1c1c22")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <td style={{ ...styles.td, fontFamily: "'DM Mono', monospace", color: "#6b7280", fontWeight: 600 }}>
+                          #{item.logId}
+                        </td>
+                        <td style={{ ...styles.td, color: "#e5e7eb", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+                          {item.vehicle}
+                        </td>
+                        <td style={{ ...styles.td, color: "#d1d5db" }}>{item.issue}</td>
+                        <td style={{ ...styles.td, color: "#9ca3af", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+                          {item.date}
+                        </td>
+                        <td style={{ ...styles.td, color: "#d1d5db", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+                          {item.cost}
+                        </td>
+                        <td style={styles.td}>
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td style={styles.td}>
+                          <div style={{ display: "flex", gap: 12 }}>
+                            <button 
+                              onClick={() => confirm('Edit functionality coming soon')} 
+                              style={styles.actBtn("#9ca3af", "#00e5a0")}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => onDeleteService(item.logId)} 
+                              style={styles.actBtn("#9ca3af", "#f87171")}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ))}
-
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} style={{ padding: "40px 24px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>
-                  No records match your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+          </>
+        )}
       </div>
     </div>
   );
