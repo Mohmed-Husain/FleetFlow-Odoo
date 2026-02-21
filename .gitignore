@@ -1,1 +1,3 @@
 odoovenv
+*.env
+__pycache__
