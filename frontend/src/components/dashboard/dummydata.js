@@ -23,7 +23,7 @@ export const navItems = [
   { label: "Vehicle Registry", icon: "truck",    href: "#" },
   { label: "Trip Dispatcher",  icon: "map",      href: "/trips" },
   { label: "Maintenance",      icon: "tool",     href: "/maintenance" },
-  { label: "Trip & Expense",   icon: "receipt",  href: "#" },
-  { label: "Performance",      icon: "bar-chart",href: "#" },
-  { label: "Analytics",        icon: "pie-chart",href: "#" },
+  { label: "Trip & Expense",   icon: "receipt",  href: "/expenses" },
+  { label: "Performance",      icon: "bar-chart",href: "/performance" },
+  { label: "Analytics",        icon: "pie-chart",href: "/analytics" },
 ];
