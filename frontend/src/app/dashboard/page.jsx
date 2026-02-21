@@ -5,7 +5,7 @@ import Topbar  from "../../components/dashboard/Topbar";
 import NewVehicleModal from "../../components/dashboard/NewVehicleModal";
 import VehicleTable    from "../../components/dashboard/VehicleTable";
 import StatCard from "../../components/dashboard/StatCard";
-import { initializeStorage } from "../../lib/storage";
+import { initializeStorage, getVehicles, getTrips } from "../../lib/storage";
 
 export default function VehicleRegistryPage() {
   const [activeNav, setActiveNav]     = useState("Vehicle Registry");
@@ -16,11 +16,27 @@ export default function VehicleRegistryPage() {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [stats, setStats] = useState({ totalVehicles: 0, maintenanceCount: 0, tripsOnWay: 0 });
 
-  // Initialize storage on component mount
+  // Initialize storage and calculate stats
   useEffect(() => {
     initializeStorage();
-  }, []);
+    updateStats();
+  }, [refreshTrigger]);
+
+  const updateStats = () => {
+    const allVehicles = getVehicles();
+    const allTrips = getTrips();
+    
+    const maintenanceVehicles = allVehicles.filter(v => v.status === "Maintenance").length;
+    const activeTrips = allTrips.filter(t => t.status === "On Trip").length;
+    
+    setStats({
+      totalVehicles: allVehicles.length,
+      maintenanceCount: maintenanceVehicles,
+      tripsOnWay: activeTrips,
+    });
+  };
 
   const handleSearch = (val) => {
     setSearch(val);
@@ -53,8 +69,9 @@ export default function VehicleRegistryPage() {
   };
 
   const handleVehicleAdded = () => {
-    // Trigger refresh of the VehicleTable
+    // Trigger refresh of the VehicleTable and stats
     setRefreshTrigger(prev => prev + 1);
+    updateStats();
   };
 
   return (
@@ -69,7 +86,6 @@ export default function VehicleRegistryPage() {
             onFilter={handleFilter}
             onSortBy={handleSortBy}
             actions={[
-              { label: "+ New Trip", variant: "primary", onClick: () => {} },
               { label: "+ New Vehicle", variant: "primary", onClick: () => setShowModal(true) },
             ]}
           />
@@ -158,9 +174,9 @@ export default function VehicleRegistryPage() {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard label="Active Fleet" value="220" color="#00e5a0" />
-              <StatCard label="Maintenance Alert" value="180" color="#ffc700" />
-              <StatCard label="Pending Cargo" value="20" color="#ff5733" />
+              <StatCard label="Total Vehicles" value={stats.totalVehicles.toString()} color="#00e5a0" />
+              <StatCard label="Maintenance Alert" value={stats.maintenanceCount.toString()} color="#ffc700" />
+              <StatCard label="Trips On Way" value={stats.tripsOnWay.toString()} color="#ff5733" />
             </div>
 
             {/* Table */}

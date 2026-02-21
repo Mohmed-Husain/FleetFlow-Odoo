@@ -20,7 +20,7 @@ export const trips = [
 
 export const navItems = [
   { label: "Dashboard",        icon: "grid",     href: "/dashboard" },
-  { label: "Vehicle Registry", icon: "truck",    href: "#" },
+
   { label: "Trip Dispatcher",  icon: "map",      href: "/trips" },
   { label: "Maintenance",      icon: "tool",     href: "/maintenance" },
   { label: "Trip & Expense",   icon: "receipt",  href: "/expenses" },

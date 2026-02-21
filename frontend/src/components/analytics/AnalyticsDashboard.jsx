@@ -1,43 +1,18 @@
 "use client";
+import { useState, useEffect } from "react";
 import {
   LineChart, Line,
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-// ── Data ──────────────────────────────────────────────────────────────────────
-const lineChartData = [
-  { name: "Jan", value: 15 }, { name: "Feb", value: 20 },
-  { name: "Mar", value: 40 }, { name: "Apr", value: 30 },
-  { name: "May", value: 50 }, { name: "Jun", value: 60 },
-  { name: "Jul", value: 55 }, { name: "Aug", value: 70 },
-  { name: "Sep", value: 80 }, { name: "Oct", value: 65 },
-  { name: "Nov", value: 75 }, { name: "Dec", value: 85 },
-];
-
-const barChartData = [
-  { name: "VAN-03", cost: 20 },
-  { name: "TRK-01", cost: 45 },
-  { name: "VAN-01", cost: 60 },
-  { name: "TRK-02", cost: 80 },
-  { name: "VAN-02", cost: 100 },
-];
-
-const financialSummaryData = [
-  { month: "Jan", revenue: "₹17L", fuelCost: "₹6L",  maintenance: "₹2L", netProfit: "₹9L"  },
-  { month: "Feb", revenue: "₹19L", fuelCost: "₹7L",  maintenance: "₹1L", netProfit: "₹11L" },
-  { month: "Mar", revenue: "₹22L", fuelCost: "₹8L",  maintenance: "₹3L", netProfit: "₹11L" },
-  { month: "Apr", revenue: "₹18L", fuelCost: "₹6L",  maintenance: "₹2L", netProfit: "₹10L" },
-  { month: "May", revenue: "₹25L", fuelCost: "₹9L",  maintenance: "₹2L", netProfit: "₹14L" },
-  { month: "Jun", revenue: "₹28L", fuelCost: "₹10L", maintenance: "₹4L", netProfit: "₹14L" },
-];
-
-const kpiCards = [
-  { label: "Total Fuel Cost",  value: "₹2.6 L",  color: "#f59e0b" },
-  { label: "Fleet ROI",        value: "+12.5%",   color: "#00e5a0" },
-  { label: "Utilization Rate", value: "82%",      color: "#a78bfa" },
-];
+import { 
+  initializeStorage, 
+  getFuelEfficiencyTrend, 
+  getTopCostliestVehicles, 
+  getFinancialSummary, 
+  getAnalyticsKPIs 
+} from "../../lib/storage";
 
 // ── Custom Tooltip ────────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }) => {
@@ -92,6 +67,21 @@ const ChartCard = ({ title, children }) => (
 
 // ── AnalyticsDashboard ────────────────────────────────────────────────────────
 export default function AnalyticsDashboard() {
+  const [lineChartData, setLineChartData] = useState([]);
+  const [barChartData, setBarChartData] = useState([]);
+  const [financialSummaryData, setFinancialSummaryData] = useState([]);
+  const [kpiCards, setKpiCards] = useState([]);
+
+  // Load real data on mount
+  useEffect(() => {
+    initializeStorage();
+    
+    setLineChartData(getFuelEfficiencyTrend());
+    setBarChartData(getTopCostliestVehicles());
+    setFinancialSummaryData(getFinancialSummary());
+    setKpiCards(getAnalyticsKPIs());
+  }, []);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, fontFamily: "'Outfit', sans-serif" }}>
 
