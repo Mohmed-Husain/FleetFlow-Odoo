@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { vehicles } from "./vehicalsdata";
+import { useState, useEffect } from "react";
+import { getVehicles, deleteVehicle, searchItems, filterItems, sortItems, groupItems } from "../../lib/storage";
 
 const statusCfg = {
   "On Trip":     "bg-[#00e5a0]/10 text-[#00e5a0]",
@@ -14,11 +14,37 @@ const dotCfg = {
   "Maintenance": "bg-[#f59e0b]",
 };
 
-export default function VehicleTable() {
-  const [rows, setRows] = useState(vehicles);
+export default function VehicleTable({ search = "", filters = {}, sortBy = "", groupBy = "" }) {
+  const [rows, setRows] = useState([]);
 
-  const handleDelete = (id) => { /* TODO: confirm then delete */ setRows(r => r.filter(v => v.id !== id)); };
-  const handleEdit   = (id) => { /* TODO: open edit modal */ };
+  // Load and update data whenever search, filters, or sort changes
+  useEffect(() => {
+    let data = getVehicles();
+
+    // Apply search
+    if (search) {
+      data = searchItems(data, search, ["plate", "model", "type", "capacity"]);
+    }
+
+    // Apply filters
+    if (Object.keys(filters).length > 0) {
+      data = filterItems(data, filters);
+    }
+
+    // Apply sort
+    if (sortBy) {
+      data = sortItems(data, sortBy);
+    }
+
+    setRows(data);
+  }, [search, filters, sortBy]);
+
+  const handleDelete = (id) => {
+    deleteVehicle(id);
+    setRows(r => r.filter(v => v.id !== id));
+  };
+
+  const handleEdit = (id) => { /* TODO: open edit modal */ };
 
   return (
     <div className="bg-[#18181c] border border-[#1f1f26] rounded-2xl overflow-hidden">

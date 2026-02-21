@@ -1,14 +1,10 @@
 "use client";
-import { trips } from "./dummydata";
-
-const tripData = [
-  { id: 1, fleetType: "Trailer Truck", origin: "Mumbai", destination: "Pune", status: "On way" },
-  // Add more trip data here
-];
+import { useState, useEffect } from "react";
+import { getTrips, deleteTrip, searchItems, filterItems, sortItems } from "../../lib/storage";
 
 // ── Status badge colours ──────────────────────────────────────────────────────
 const statusStyle = {
-  "On way":     { background: "rgba(0,229,160,0.12)",  color: "#00e5a0",  dot: "#00e5a0"  },
+  "On Trip":     { background: "rgba(0,229,160,0.12)",  color: "#00e5a0",  dot: "#00e5a0"  },
   "Idle":        { background: "rgba(107,114,128,0.15)", color: "#9ca3af", dot: "#9ca3af"  },
   "Maintenance": { background: "rgba(245,158,11,0.12)", color: "#f59e0b",  dot: "#f59e0b"  },
 };
@@ -24,7 +20,31 @@ const StatusBadge = ({ status }) => {
 };
 
 // ── TripTable ─────────────────────────────────────────────────────────────────
-export default function TripTable() {
+export default function TripTable({ search = "", filters = {}, sortBy = "" }) {
+  const [tripData, setTripData] = useState([]);
+
+  // Load and update data whenever search, filters, or sort changes
+  useEffect(() => {
+    let data = getTrips();
+
+    // Apply search
+    if (search) {
+      data = searchItems(data, search, ["vehicle", "origin", "destination", "driver", "type"]);
+    }
+
+    // Apply filters
+    if (Object.keys(filters).length > 0) {
+      data = filterItems(data, filters);
+    }
+
+    // Apply sort
+    if (sortBy) {
+      data = sortItems(data, sortBy);
+    }
+
+    setTripData(data);
+  }, [search, filters, sortBy]);
+
   const handleRowClick = (trip) => { /* TODO: open trip detail */ };
 
   return (
@@ -56,7 +76,7 @@ export default function TripTable() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#1c1c22"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                <td style={{ ...styles.td, color: "#e5e7eb" }}>{trip.fleetType}</td>
+                <td style={{ ...styles.td, color: "#e5e7eb" }}>{trip.type}</td>
                 <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.origin}</td>
                 <td style={{ ...styles.td, color: "#d1d5db" }}>{trip.destination}</td>
                 <td style={styles.td}><StatusBadge status={trip.status} /></td>
