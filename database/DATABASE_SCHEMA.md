@@ -89,17 +89,17 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 |--------|------|-------------|-------------|
 | `id` | SERIAL | PK | Primary key |
 | `license_plate` | VARCHAR(20) | UNIQUE, NOT NULL | Plate number (unique identifier) |
-| `make` | VARCHAR(100) | NOT NULL | Manufacturer |
-| `model` | VARCHAR(100) | NOT NULL | Model name |
+<!-- | `make` | VARCHAR(100) | NOT NULL | Manufacturer |
+| `model` | VARCHAR(100) | NOT NULL | Model name | -->
 | `year` | SMALLINT | NOT NULL, 1900–2100 | Manufacturing year |
 | `vehicle_type` | vehicle_type | NOT NULL | truck, van, tanker, etc. |
 | `fuel_type` | fuel_type | DEFAULT 'diesel' | diesel, petrol, cng, etc. |
 | `max_load_capacity_kg` | DECIMAL(10,2) | NOT NULL, > 0 | Max cargo weight |
 | `current_odometer_km` | DECIMAL(12,2) | DEFAULT 0, >= 0 | Current mileage (auto-synced from fuel_logs) |
 | `status` | vehicle_status | DEFAULT 'idle' | `idle`, `on_trip`, `in_shop`, `retired` |
-| `is_active` | BOOLEAN | DEFAULT TRUE | Soft delete |
-| `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
+<!-- | `is_active` | BOOLEAN | DEFAULT TRUE | Soft delete | -->
+<!-- | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
 **Relationships:** 1:N → `trips`, `maintenance_logs`, `fuel_logs`, `expenses`, `vehicle_documents`
 
@@ -119,8 +119,8 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `license_expiry` | DATE | NOT NULL | Expiry date (enforced by trigger) |
 | `safety_score` | DECIMAL(5,2) | DEFAULT 100, 0–100 | App-maintained safety rating |
 | `duty_status` | duty_status | DEFAULT 'off_duty' | `on_duty`, `off_duty`, `on_break`, `suspended` |
-| `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
+<!-- | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
 **Relationships:** N:1 → `users` | 1:N → `trips`, `fuel_logs`, `driver_complaints`
 
@@ -144,11 +144,13 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `revenue` | DECIMAL(14,2) | DEFAULT 0, >= 0 | Trip earnings |
 | `status` | trip_status | DEFAULT 'scheduled' | `scheduled` → `in_transit` → `delivered` / `cancelled` |
 | `scheduled_departure` | TIMESTAMPTZ | NOT NULL | Planned departure |
-| `actual_departure` | TIMESTAMPTZ | | When it actually left |
-| `actual_arrival` | TIMESTAMPTZ | | When it actually arrived |
-| `created_by` | INTEGER | FK → users | Who dispatched this |
+| `scheduled_arrival` | TIMESTAMPTZ | NOT NULL | Planned departure |
+
+<!-- | `actual_departure` | TIMESTAMPTZ | | When it actually left | -->
+<!-- | `actual_arrival` | TIMESTAMPTZ | | When it actually arrived | -->
+<!-- | `created_by` | INTEGER | FK → users | Who dispatched this |
 | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
 **Relationships:** N:1 → `vehicles`, `drivers`, `users` | 1:N → `expenses`, `fuel_logs`, `driver_complaints`
 
@@ -170,9 +172,10 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `completion_date` | DATE | | Work end (must be >= start_date) |
 | `cost` | DECIMAL(12,2) | DEFAULT 0, >= 0 | Service cost |
 | `status` | maintenance_status | DEFAULT 'new' | `new`, `in_progress`, `completed`, `cancelled` |
-| `created_by` | INTEGER | FK → users | Who logged this |
+
+<!-- | `created_by` | INTEGER | FK → users | Who logged this |
 | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
 **Relationships:** N:1 → `vehicles`, `users`
 
@@ -193,9 +196,10 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `amount` | DECIMAL(12,2) | NOT NULL, > 0 | Amount |
 | `description` | VARCHAR(500) | | Details |
 | `expense_date` | DATE | DEFAULT TODAY | When incurred |
-| `created_by` | INTEGER | FK → users | Who recorded |
-| `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
+
+<!-- | `created_by` | INTEGER | FK → users | Who recorded | -->
+<!-- | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
 **Relationships:** N:1 → `trips`, `vehicles`, `users`
 
@@ -216,7 +220,7 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `total_cost` | DECIMAL(12,2) | **GENERATED** (liters × cost_per_liter) | Auto-calculated |
 | `odometer_at_fill` | DECIMAL(12,2) | NOT NULL, >= 0 | Odometer reading |
 | `fuel_date` | DATE | DEFAULT TODAY | Fill-up date |
-| `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
+<!-- | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation | -->
 
 **Relationships:** N:1 → `vehicles`, `drivers`, `trips`
 
@@ -239,8 +243,9 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `status` | complaint_status | DEFAULT 'open' | open, investigating, resolved, dismissed |
 | `reported_by` | INTEGER | FK → users | Filed by |
 | `resolved_at` | TIMESTAMPTZ | | Resolution timestamp |
-| `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
+
+<!-- | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
 **Relationships:** N:1 → `drivers`, `trips`, `users`
 
@@ -258,8 +263,8 @@ Normalized (3NF) PostgreSQL schema for **FleetFlow: Modular Fleet & Logistics Ma
 | `document_number` | VARCHAR(100) | NOT NULL | Document ID |
 | `issue_date` | DATE | NOT NULL | Issued on |
 | `expiry_date` | DATE | NOT NULL, >= issue_date | Expires on |
-| `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update |
+<!-- | `created_at` | TIMESTAMPTZ | NOT NULL | Record creation |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | Last update | -->
 
 **Constraints:** UNIQUE on `(vehicle_id, document_type, document_number)`
 
